@@ -1,0 +1,357 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Plus Jakarta Sans", var(--font-sans);
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+@layer base {
+  body {
+    background-color: #e0e5ec;
+    color: #000000;
+    font-family: var(--font-sans);
+    letter-spacing: -0.01em;
+  }
+
+  /* Universal deep black typography defaults */
+  h1, h2, h3, h4, h5, h6, p, label, th, td {
+    color: #000000;
+  }
+
+  input, select, textarea, option {
+    color: #000000 !important;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: #4b5563 !important;
+    opacity: 0.85;
+  }
+
+  /* Custom glass scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #e0e5ec;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Neumorphism flat elements (extruded/raised from background) */
+.neu-flat {
+  background: #e0e5ec;
+  box-shadow: 9px 9px 16px rgba(163, 177, 198, 0.55), 
+              -9px -9px 16px rgba(255, 255, 255, 0.85);
+  border-radius: 24px;
+}
+
+/* Neumorphism flat elements small */
+.neu-flat-sm {
+  background: #e0e5ec;
+  box-shadow: 5px 5px 10px rgba(163, 177, 198, 0.5), 
+              -5px -5px 10px rgba(255, 255, 255, 0.85);
+  border-radius: 16px;
+}
+
+/* Neumorphism inset elements (pressed into background) */
+.neu-inset {
+  background: #e0e5ec;
+  box-shadow: inset 6px 6px 12px rgba(163, 177, 198, 0.55), 
+              inset -6px -6px 12px rgba(255, 255, 255, 0.85);
+  border-radius: 20px;
+}
+
+.neu-inset-sm {
+  background: #e0e5ec;
+  box-shadow: inset 3px 3px 6px rgba(163, 177, 198, 0.5), 
+              inset -3px -3px 6px rgba(255, 255, 255, 0.85);
+  border-radius: 12px;
+}
+
+/* Neumorphism dynamic buttons (extruded, presses when clicked/active) */
+.neu-btn {
+  background: #e0e5ec;
+  box-shadow: 6px 6px 12px rgba(163, 177, 198, 0.5), 
+              -6px -6px 12px rgba(255, 255, 255, 0.85);
+  border-radius: 16px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #000000 !important;
+}
+
+.neu-btn:hover {
+  box-shadow: 3px 3px 6px rgba(163, 177, 198, 0.55), 
+              -3px -3px 6px rgba(255, 255, 255, 0.9);
+  color: #000000 !important;
+}
+
+.neu-btn:active, .neu-btn-active {
+  box-shadow: inset 4px 4px 8px rgba(163, 177, 198, 0.6), 
+              inset -4px -4px 8px rgba(255, 255, 255, 0.9);
+  color: #000000 !important;
+}
+
+/* Neumorphism specific inputs */
+.neu-input {
+  background: #e0e5ec;
+  box-shadow: inset 4px 4px 8px rgba(163, 177, 198, 0.55), 
+              inset -4px -4px 8px rgba(255, 255, 255, 0.85);
+  border-radius: 14px;
+  border: none;
+  color: #000000 !important;
+  transition: all 0.2s ease;
+}
+
+.neu-input:focus {
+  outline: none;
+  box-shadow: inset 5px 5px 10px rgba(163, 177, 198, 0.65), 
+              inset -5px -5px 10px rgba(255, 255, 255, 0.9);
+}
+
+/* Rounded pills for metrics */
+.neu-pill {
+  background: #e0e5ec;
+  box-shadow: 3px 3px 6px rgba(163, 177, 198, 0.45), 
+              -3px -3px 6px rgba(255, 255, 255, 0.85);
+  border-radius: 9999px;
+}
+
+/* Glassmorphic frosted overlays */
+.glass-panel {
+  background: #e0e5ec;
+  box-shadow: 9px 9px 16px rgba(163, 177, 198, 0.55), 
+              -9px -9px 16px rgba(255, 255, 255, 0.85);
+  border-radius: 24px;
+}
+
+.glass-card {
+  background: #e0e5ec;
+  box-shadow: 6px 6px 12px rgba(163, 177, 198, 0.5), 
+              -6px -6px 12px rgba(255, 255, 255, 0.85);
+  border-radius: 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 8px 8px 16px rgba(163, 177, 198, 0.55), 
+              -8px -8px 16px rgba(255, 255, 255, 0.9);
+}
+
+.glass-input {
+  background: #e0e5ec;
+  box-shadow: inset 4px 4px 8px rgba(163, 177, 198, 0.55), 
+              inset -4px -4px 8px rgba(255, 255, 255, 0.85);
+  border-radius: 14px;
+  color: #000000 !important;
+  transition: all 0.2s ease;
+}
+
+.glass-input:focus {
+  outline: none;
+  box-shadow: inset 5px 5px 10px rgba(163, 177, 198, 0.65), 
+              inset -5px -5px 10px rgba(255, 255, 255, 0.9);
+}
+
+.glass-btn {
+  background: #e0e5ec;
+  box-shadow: 5px 5px 10px rgba(163, 177, 198, 0.5), 
+              -5px -5px 10px rgba(255, 255, 255, 0.85);
+  border-radius: 14px;
+  color: #000000 !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-btn:hover {
+  box-shadow: 3px 3px 6px rgba(163, 177, 198, 0.55), 
+              -3px -3px 6px rgba(255, 255, 255, 0.9);
+  color: #000000 !important;
+}
+
+/* Ambient glow eliminated */
+.ambient-glow {
+  display: none !important;
+}
+
+/* ==========================================================================
+   EFEK GLOSSY & GLOW DIHILANGKAN SECARA TOTAL SESUAI PERMINTAAN USER
+   Semua teks glossy & neon dinetralkan menjadi hitam pekat (#000000) tanpa glow
+   ========================================================================== */
+
+/* Universal removal of any text-shadow or glow */
+*, *::before, *::after {
+  text-shadow: none !important;
+}
+
+/* Neutralize glossy text classes to solid deep black without gradients or reflections */
+.text-glossy-dark,
+.text-glossy-indigo,
+.text-glossy-cyan,
+.text-glossy-emerald,
+.text-glossy-amber,
+.text-glossy-rose,
+.text-glossy-violet,
+.text-glossy-orange,
+.text-glossy-fuchsia {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  -webkit-text-fill-color: #000000 !important;
+  color: #000000 !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+/* Neutralize neon-glow text classes to solid deep black without glow */
+.neon-glow-cyan,
+.neon-glow-indigo,
+.neon-glow-violet,
+.neon-glow-emerald,
+.neon-glow-amber,
+.neon-glow-rose,
+.neon-glow-orange,
+.neon-glow-fuchsia {
+  color: #000000 !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+/* Neumorphic card without reflective glossy rim */
+.glossy-card-rim {
+  border: 1px solid rgba(163, 177, 198, 0.25);
+  box-shadow: 6px 6px 12px rgba(163, 177, 198, 0.5),
+              -6px -6px 12px rgba(255, 255, 255, 0.85);
+}
+
+.glossy-card-rim:hover {
+  border-color: rgba(163, 177, 198, 0.35);
+  box-shadow: 4px 4px 10px rgba(163, 177, 198, 0.55),
+              -4px -4px 10px rgba(255, 255, 255, 0.9);
+}
+
+/* Neutralize chart arc glow */
+.neon-arc-glow {
+  filter: none !important;
+}
+
+/* ==========================================================================
+   TEMA WARNA TEKS HITAM PEKAT TOTAL (SOLID PITCH BLACK #000000)
+   Menjadikan seluruh teks di semua halaman, card dashboard, tabel, modal,
+   serta menu navigasi (termasuk saat di-hover) menjadi hitam pekat.
+   ========================================================================== */
+
+/* Overrides for text color utility classes across all pages to solid pitch black */
+.text-slate-300,
+.text-slate-400,
+.text-slate-500,
+.text-slate-600,
+.text-slate-700,
+.text-slate-800,
+.text-slate-900,
+.text-gray-300,
+.text-gray-400,
+.text-gray-500,
+.text-gray-600,
+.text-gray-700,
+.text-gray-800,
+.text-gray-900,
+.text-zinc-300,
+.text-zinc-400,
+.text-zinc-500,
+.text-zinc-600,
+.text-zinc-700,
+.text-zinc-800,
+.text-zinc-900,
+.text-neutral-300,
+.text-neutral-400,
+.text-neutral-500,
+.text-neutral-600,
+.text-neutral-700,
+.text-neutral-800,
+.text-neutral-900,
+.text-\[\#2d3748\],
+.text-\[\#3e4a5b\],
+.text-\[\#1e293b\],
+.text-\[\#1a2536\],
+.text-\[\#4a5568\],
+.text-\[\#718096\],
+.text-\[\#64748b\],
+.text-\[\#334155\],
+.text-\[\#0f172a\] {
+  color: #000000 !important;
+}
+
+/* Menu navigasi & sidebar: Teks selalu hitam pekat baik saat normal, aktif, maupun di-hover */
+aside button,
+aside button:hover,
+aside button:active,
+aside button:focus,
+aside button *,
+aside button:hover *,
+aside button:active *,
+nav button,
+nav button:hover,
+nav button:active,
+nav button:focus,
+nav button *,
+nav button:hover *,
+nav button:active *,
+aside a,
+aside a:hover,
+nav a,
+nav a:hover {
+  color: #000000 !important;
+}
+
+/* Area card dashboard & neumorphic elements: seluruh teks hitam pekat (#000000) */
+.glass-card *:not(.text-white):not([class*="bg-indigo-600"]):not([class*="bg-emerald-600"]):not([class*="bg-rose-600"]):not([class*="bg-amber-600"]),
+.glossy-card-rim *:not(.text-white):not([class*="bg-indigo-600"]):not([class*="bg-emerald-600"]):not([class*="bg-rose-600"]):not([class*="bg-amber-600"]):not([class*="bg-black"]) {
+  color: #000000 !important;
+}
+
+/* Hover overrides for text across all areas to guarantee pure black text */
+.hover\:text-slate-600:hover,
+.hover\:text-slate-700:hover,
+.hover\:text-slate-800:hover,
+.hover\:text-slate-900:hover,
+.hover\:text-gray-600:hover,
+.hover\:text-gray-700:hover,
+.hover\:text-gray-800:hover,
+.hover\:text-gray-900:hover,
+.hover\:text-indigo-900:hover,
+.hover\:text-blue-900:hover,
+.hover\:text-emerald-900:hover,
+.hover\:text-orange-900:hover,
+.hover\:text-rose-900:hover,
+.hover\:text-indigo-600:hover,
+.hover\:text-blue-600:hover,
+.hover\:text-emerald-600:hover,
+.hover\:text-orange-600:hover,
+.hover\:text-rose-600:hover,
+.hover\:text-emerald-700:hover {
+  color: #000000 !important;
+}
+
+/* Ensure table headers, table cells, modal labels, and form fields are crisp deep black */
+th, td {
+  color: #000000;
+}
+
+table th {
+  color: #000000 !important;
+  font-weight: 800;
+}
+
+table td {
+  color: #000000 !important;
+}
+
+
+

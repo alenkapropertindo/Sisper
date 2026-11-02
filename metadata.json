@@ -1,0 +1,8 @@
+{
+  "name": "SISPER2",
+  "description": "Sistem Informasi Perumahan - Glassmorphic property engineering and sales management applet.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

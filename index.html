@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SISPER2 - Sistem Informasi Perumahan</title>
+    <meta name="description" content="Sistem Informasi Perumahan - Glassmorphic property engineering and sales management applet." />
+    <meta property="og:title" content="SISPER2 - Sistem Informasi Perumahan" />
+    <meta property="og:description" content="Sistem Informasi Perumahan - Glassmorphic property engineering and sales management applet." />
+    <script>
+      // Safe global fetch getter/setter decorator to prevent "TypeError: Cannot set property fetch of #<Window> which has only a getter"
+      (function() {
+        try {
+          var originalFetch = window.fetch;
+          if (originalFetch) {
+            var currentFetch = originalFetch;
+            var descriptor = Object.getOwnPropertyDescriptor(window, 'fetch');
+            if (!descriptor || descriptor.configurable) {
+              Object.defineProperty(window, 'fetch', {
+                get: function() { return currentFetch; },
+                set: function(val) { currentFetch = val; },
+                configurable: true,
+                enumerable: true
+              });
+            }
+            if (typeof globalThis !== 'undefined' && globalThis !== window) {
+              var gtDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'fetch');
+              if (!gtDescriptor || gtDescriptor.configurable) {
+                Object.defineProperty(globalThis, 'fetch', {
+                  get: function() { return currentFetch; },
+                  set: function(val) { currentFetch = val; },
+                  configurable: true,
+                  enumerable: true
+                });
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("SISPER: Safe-fetch fallback shim skipped:", e);
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
