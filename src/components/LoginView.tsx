@@ -20,13 +20,6 @@ export interface UserSession {
   roleLabel: string;
 }
 
-const DEMO_ACCOUNTS = [
-  { username: 'superadmin', password: 'sisper123', name: 'Rizqo', role: 'super_admin' as const, roleLabel: 'Super Admin', color: 'indigo' },
-  { username: 'irfan', password: 'irfan1', name: 'Irfan', role: 'logistik' as const, roleLabel: 'Logistik', color: 'emerald' },
-  { username: 'risko', password: 'risko2', name: 'Agung Saputra', role: 'pengawas' as const, roleLabel: 'Pengawas', color: 'blue' },
-  { username: 'emy', password: 'emy123', name: 'Siti Rahma', role: 'marketing' as const, roleLabel: 'Marketing', color: 'orange' },
-  { username: 'fira', password: 'fira321', name: 'Budi Santoso', role: 'admin_umum' as const, roleLabel: 'Admin Umum', color: 'rose' },
-];
 
 interface LoginViewProps {
   onLoginSuccess: (session: UserSession) => void;

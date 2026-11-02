@@ -656,7 +656,18 @@ export default function ConstructionView({
                                 ? 'bg-gradient-to-r from-violet-400 to-indigo-500 shadow-[0_0_8px_rgba(167,139,250,0.55)]'
                                 : 'bg-slate-300'
                             }`}
-                            style={{ width: `${avgProgVal}%` }}
+                            style={{ 
+                              width: `${avgProgVal}%`,
+                              ...(avgProgVal === 100 
+                                ? { background: 'linear-gradient(90deg, #10b981 0%, #14b8a6 50%, #059669 100%)', boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)' }
+                                : avgProgVal >= 70
+                                ? { background: 'linear-gradient(90deg, #06b6d4 0%, #38bdf8 50%, #2563eb 100%)', boxShadow: '0 0 8px rgba(56, 189, 248, 0.6)' }
+                                : avgProgVal >= 40
+                                ? { background: 'linear-gradient(90deg, #fbbf24 0%, #fb923c 50%, #f59e0b 100%)', boxShadow: '0 0 8px rgba(251, 191, 36, 0.6)' }
+                                : avgProgVal > 0
+                                ? { background: 'linear-gradient(90deg, #a855f7 0%, #c084fc 50%, #6366f1 100%)', boxShadow: '0 0 8px rgba(168, 85, 247, 0.6)' }
+                                : { background: '#cbd5e1' })
+                            }}
                           />
                         </div>
                         <div className="text-[10px] text-slate-400 font-mono mt-1 space-y-0.5">

@@ -3,23 +3,18 @@ import {
   Building2, 
   Users, 
   Activity, 
-  Warehouse, 
   TrendingUp, 
   Home, 
   ShoppingBag, 
   Layers, 
   AlertTriangle,
   Clock,
-  FileSpreadsheet,
   CheckCircle2,
-  AlertCircle,
   ArrowRight,
   Package,
   Coins,
   Search,
-  ExternalLink,
-  ShieldCheck,
-  TrendingDown
+  ShieldCheck
 } from 'lucide-react';
 import { 
   Project, 
@@ -84,6 +79,36 @@ const getProgressBarGradient = (progress: number) => {
     return 'bg-gradient-to-r from-violet-400 via-purple-400 to-indigo-500 shadow-[0_0_8px_rgba(167,139,250,0.55)]';
   }
   return 'bg-slate-300';
+};
+
+const getProgressBarStyle = (progress: number): React.CSSProperties => {
+  if (progress >= 100) {
+    return {
+      background: 'linear-gradient(90deg, #10b981 0%, #14b8a6 50%, #059669 100%)',
+      boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)'
+    };
+  }
+  if (progress >= 70) {
+    return {
+      background: 'linear-gradient(90deg, #06b6d4 0%, #38bdf8 50%, #2563eb 100%)',
+      boxShadow: '0 0 8px rgba(56, 189, 248, 0.6)'
+    };
+  }
+  if (progress >= 40) {
+    return {
+      background: 'linear-gradient(90deg, #fbbf24 0%, #fb923c 50%, #f59e0b 100%)',
+      boxShadow: '0 0 8px rgba(251, 191, 36, 0.6)'
+    };
+  }
+  if (progress > 0) {
+    return {
+      background: 'linear-gradient(90deg, #a855f7 0%, #c084fc 50%, #6366f1 100%)',
+      boxShadow: '0 0 8px rgba(168, 85, 247, 0.6)'
+    };
+  }
+  return {
+    background: '#cbd5e1'
+  };
 };
 
 function DonutChartWidget({ value, title, subtitle, strokeColor, gradientId, gradientColors, icon, onClick }: DonutChartProps) {
@@ -831,10 +856,10 @@ export default function DashboardView({
                     <span>Penyelesaian Fisik</span>
                     <span className="text-black font-mono font-black">{home.avgProgress}%</span>
                   </div>
-                  <div className="w-full bg-[#e0e5ec] h-3.5 rounded-full p-0.5 shadow-[inset_2px_2px_4px_rgba(163,177,198,0.5),inset_-2px_-2px_4px_rgba(255,255,255,0.85)] border border-slate-300/40">
+                    <div className="w-full bg-[#e0e5ec] h-3.5 rounded-full p-0.5 shadow-[inset_2px_2px_4px_rgba(163,177,198,0.5),inset_-2px_-2px_4px_rgba(255,255,255,0.85)] border border-slate-300/40">
                     <div 
                       className={`h-2.5 rounded-full transition-all duration-500 ${getProgressBarGradient(home.avgProgress)}`}
-                      style={{ width: `${home.avgProgress}%` }}
+                      style={{ width: `${home.avgProgress}%`, ...getProgressBarStyle(home.avgProgress) }}
                     />
                   </div>
                 </div>
@@ -1036,7 +1061,7 @@ export default function DashboardView({
                       <div className="w-full bg-[#e0e5ec] h-2.5 rounded-full p-0.5 shadow-[inset_1.5px_1.5px_3px_rgba(163,177,198,0.5),inset_-1.5px_-1.5px_3px_rgba(255,255,255,0.85)]">
                         <div
                           className={`h-1.5 rounded-full transition-all duration-300 ${getProgressBarGradient(item.physicalProgress)}`}
-                          style={{ width: `${item.physicalProgress}%` }}
+                          style={{ width: `${item.physicalProgress}%`, ...getProgressBarStyle(item.physicalProgress) }}
                         />
                       </div>
                     </div>
@@ -1178,7 +1203,7 @@ export default function DashboardView({
                             <div className="w-16 bg-[#e0e5ec] h-2 rounded-full p-0.5 shadow-[inset_1px_1px_2px_rgba(163,177,198,0.5)] border border-slate-300/40">
                               <div
                                 className={`h-1 rounded-full transition-all duration-300 ${getProgressBarGradient(item.physicalProgress)}`}
-                                style={{ width: `${item.physicalProgress}%` }}
+                                style={{ width: `${item.physicalProgress}%`, ...getProgressBarStyle(item.physicalProgress) }}
                               />
                             </div>
                           </div>

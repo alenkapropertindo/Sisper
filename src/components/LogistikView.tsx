@@ -907,74 +907,53 @@ export default function LogistikView({
               <div className="space-y-4">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                   <div>
-                    <h5 className="font-display font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
-                      <span>Item Standar Material: </span>
-                      <span className="text-indigo-600 font-extrabold">{activeRab ? activeRab.namaRab : 'Pilih Template'}</span>
+                    <h5 className="font-display font-bold text-black text-sm sm:text-base flex items-center gap-2">
+                      <span className="text-black">Item Standar Material: </span>
+                      <span className="text-black font-black">{activeRab ? activeRab.namaRab : 'Pilih Template'}</span>
                     </h5>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Jumlah standar material di bawah ini adalah acuan batas pemakaian untuk <strong>1 unit rumah</strong>.
+                    <p className="text-xs text-black font-medium mt-0.5">
+                      Jumlah standar material di bawah ini adalah acuan batas pemakaian untuk <strong className="font-black text-black">1 unit rumah</strong>.
                     </p>
                   </div>
 
                   {onAddRabDetail && activeRab && (
                     <button
                       onClick={() => onAddRabDetail(activeRab.id)}
-                      className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition cursor-pointer"
+                      className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-black text-xs font-bold rounded-xl border border-black/20 transition cursor-pointer"
                     >
-                      <PlusCircle size={14} />
+                      <PlusCircle size={14} className="text-black" />
                       + Tambah Item Material ke RAB Ini
                     </button>
                   )}
                 </div>
 
-                <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white/70 shadow-sm">
+                <div className="overflow-x-auto rounded-2xl border border-black/20 bg-white shadow-sm">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-500 text-[11px] uppercase font-bold font-display">
+                      <tr className="bg-slate-50 border-b border-black/10 text-black text-[11px] uppercase font-black font-display">
                         <th className="p-3.5">Nama Material</th>
-                        <th className="p-3.5">Kategori</th>
                         <th className="p-3.5">Satuan</th>
-                        <th className="p-3.5 text-right font-mono">Standar per 1 Unit</th>
-                        <th className="p-3.5 text-right font-mono">Estimasi Harga Satuan</th>
-                        <th className="p-3.5 text-right font-mono">Estimasi Subtotal / Unit</th>
+                        <th className="p-3.5 text-right font-mono">Quantity Standar</th>
                         <th className="p-3.5 text-center">Aksi</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 text-slate-700">
+                    <tbody className="divide-y divide-slate-100 text-black">
                       {filteredDetails.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="p-8 text-center text-slate-400 italic">
+                          <td colSpan={4} className="p-8 text-center text-black font-bold italic">
                             Belum ada item material dalam template RAB ini. Klik "+ Tambah Item Material ke RAB Ini" untuk menambahkan.
                           </td>
                         </tr>
                       ) : (
                         filteredDetails.map((item) => {
-                          const matchedInv = inventoryList.find(
-                            i => i.namaMaterial.toLowerCase().trim() === item.namaMaterial.toLowerCase().trim()
-                          );
-                          const hargaSatuan = matchedInv?.harga || 0;
-                          const subtotal = item.qtyStandar * hargaSatuan;
-                          const kategori = matchedInv?.kategoriMaterial || 'Struktur';
-
                           return (
-                            <tr key={item.id} className="hover:bg-white/80 transition">
-                              <td className="p-3.5 font-bold font-display text-slate-900 text-xs sm:text-sm">
+                            <tr key={item.id} className="hover:bg-slate-50 transition">
+                              <td className="p-3.5 font-bold font-display text-black text-xs sm:text-sm">
                                 {item.namaMaterial}
                               </td>
-                              <td className="p-3.5">
-                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getCategoryBadgeStyle(kategori)}`}>
-                                  {kategori}
-                                </span>
-                              </td>
-                              <td className="p-3.5 font-semibold text-slate-600">{item.satuan}</td>
-                              <td className="p-3.5 text-right font-mono font-bold text-indigo-600 text-sm">
-                                {item.qtyStandar} <span className="text-xs font-normal text-slate-400">{item.satuan}</span>
-                              </td>
-                              <td className="p-3.5 text-right font-mono text-slate-600">
-                                {hargaSatuan > 0 ? formatRupiah(hargaSatuan) : '-'}
-                              </td>
-                              <td className="p-3.5 text-right font-mono font-bold text-slate-800">
-                                {subtotal > 0 ? formatRupiah(subtotal) : '-'}
+                              <td className="p-3.5 font-semibold text-black">{item.satuan}</td>
+                              <td className="p-3.5 text-right font-mono font-black text-black text-sm">
+                                {item.qtyStandar} <span className="text-xs font-normal text-black">{item.satuan}</span>
                               </td>
                               <td className="p-3.5 text-center">
                                 {onDeleteRabDetail && (
@@ -985,7 +964,7 @@ export default function LogistikView({
                                       }
                                     }}
                                     title="Hapus Item dari RAB"
-                                    className="p-1.5 text-black hover:text-black hover:bg-slate-100 rounded-lg transition"
+                                    className="p-1.5 text-black hover:text-red-600 hover:bg-slate-100 rounded-lg transition"
                                   >
                                     <Trash2 size={14} className="text-black" />
                                   </button>

@@ -95,146 +95,18 @@ function setupDatabase() {
     }
   });
 
-  seedInitialData();
+  // Inisialisasi akun superadmin default jika sheet akun masih kosong (agar pengguna langsung bisa login)
+  const akunSheet = ss.getSheetByName('akun');
+  if (akunSheet && akunSheet.getLastRow() <= 1) {
+    akunSheet.getRange(2, 1, 1, 5).setValues([
+      ['superadmin', 'sisper123', 'Super Admin', 'super_admin', 'Super Admin']
+    ]);
+  }
+
   return { 
     status: 'ok', 
-    message: 'Update berhasil! Sheet dan kolom baru telah ditambahkan tanpa menghapus atau mengubah data lama Anda.' 
+    message: 'Setup database selesai! Seluruh 15 sheet dan header telah siap digunakan secara bersih langsung dari database Anda.' 
   };
-}
-
-function seedInitialData() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-  const seedMap = {
-    akun: [
-      ['superadmin', 'sisper123', 'Rizqo', 'super_admin', 'Super Admin'],
-      ['irfan', 'irfan1', 'Irfan', 'logistik', 'Logistik'],
-      ['risko', 'risko2', 'Agung Saputra', 'pengawas', 'Pengawas'],
-      ['emy', 'emy123', 'Siti Rahma', 'marketing', 'Marketing'],
-      ['fira', 'fira321', 'Budi Santoso', 'admin_umum', 'Admin Umum']
-    ],
-    projects: [
-      ['prj-01', 'Permata Hijau Residence', 'Bandung Utara', 'rab-01'],
-      ['prj-02', 'Griya Harmony Cluster', 'Cibubur, Depok', 'rab-02'],
-      ['prj-03', 'Grand Nirwana Regency', 'Sidoarjo, Surabaya', 'rab-01']
-    ],
-    rab_template: [
-      ['rab-01', 'RAB Standar Type 36 & 45', 'Standar material bata merah per 1 unit rumah'],
-      ['rab-02', 'RAB Premium Cluster Harmony', 'Standar spesifikasi hebel & finishing granit']
-    ],
-    rab_detail: [
-      ['rabd-01', 'rab-01', 'Semen Tigaroda 50kg', 'Semen/Sak', 70],
-      ['rabd-02', 'rab-01', 'Besi Beton 10mm', 'Batang', 18],
-      ['rabd-03', 'rab-01', 'Pasir Muntilan Pasang', 'M3 (Kubik)', 12],
-      ['rabd-04', 'rab-01', 'Genteng Keramik Kanmuri', 'Pcs', 1500],
-      ['rabd-05', 'rab-01', 'Gipsum Jayaboard 9mm', 'Lembar', 25],
-      ['rabd-06', 'rab-02', 'Semen Tigaroda 50kg', 'Semen/Sak', 85],
-      ['rabd-07', 'rab-02', 'Besi Beton 10mm', 'Batang', 24],
-      ['rabd-08', 'rab-02', 'Keramik Lantai 60x60 Milan', 'Dus', 45]
-    ],
-    gudang: [
-      ['gud-01', 'Gudang Utama Permata', 'Permata Hijau Blok G'],
-      ['gud-02', 'Gudang Transit Griya', 'Harmony Cluster Ruko A'],
-      ['gud-03', 'Gudang Sentral Nirwana', 'Grand Sentral Regency Kav 14']
-    ],
-    suppliers: [
-      ['sup-01', 'CV. Sinar Baja Abadi', '081234567890', 'Jl. Industri No. 45, Bandung'],
-      ['sup-02', 'PT. Semen Nusantara Prima', '081987654321', 'Kawasan Industri Gresik, Jatim'],
-      ['sup-03', 'Toko Surya Kelistrikan', '085643210987', 'Jl. Margonda Raya No. 120, Depok']
-    ],
-    inventory: [
-      ['mat-01', 'Semen Tigaroda 50kg', 'gud-01', 450, 'Semen/Sak', 80, 72000, 'Struktur'],
-      ['mat-02', 'Besi Beton 10mm', 'gud-01', 120, 'Batang', 50, 95000, 'Struktur'],
-      ['mat-03', 'Pasir Muntilan Pasang', 'gud-01', 18, 'M3 (Kubik)', 5, 320000, 'Struktur'],
-      ['mat-04', 'Genteng Keramik Kanmuri', 'gud-02', 3400, 'Pcs', 1000, 14500, 'Atap'],
-      ['mat-05', 'Gipsum Jayaboard 9mm', 'gud-02', 85, 'Lembar', 30, 68000, 'Plafon'],
-      ['mat-06', 'Kabel NYM 3x2.5 Eternal', 'gud-03', 14, 'Roll', 4, 650000, 'Kelistrikan'],
-      ['mat-07', 'Keramik Lantai 60x60 Milan', 'gud-03', 90, 'Dus', 25, 135000, 'Finishing']
-    ],
-    konstruksi: [
-      ['A-01', 'prj-01', 'Permata Hijau Residence', 'Type 45', 90, 45, 'terbangun', 'terjual', '2026-01-10', '2026-04-20'],
-      ['A-02', 'prj-01', 'Permata Hijau Residence', 'Type 45', 90, 45, 'onProgres', 'terbooking', '2026-03-05', ''],
-      ['A-03', 'prj-01', 'Permata Hijau Residence', 'Type 36', 72, 36, 'terbangun', 'tersedia', '2026-02-15', '2026-05-10'],
-      ['B-01', 'prj-02', 'Griya Harmony Cluster', 'Type 60', 120, 60, 'onProgres', 'terbooking', '2026-04-01', ''],
-      ['B-02', 'prj-02', 'Griya Harmony Cluster', 'Type 36', 72, 36, 'terbangun', 'terjual', '2026-01-20', '2026-04-25'],
-      ['B-03', 'prj-02', 'Griya Harmony Cluster', 'Type 120/120', 150, 120, 'onProgres', 'tersedia', '2026-05-10', ''],
-      ['C-01', 'prj-03', 'Grand Nirwana Regency', 'Type 72', 105, 72, 'terbangun', 'terjual', '2025-11-12', '2026-03-01'],
-      ['C-02', 'prj-03', 'Grand Nirwana Regency', 'Type 72', 105, 72, 'onProgres', 'terbooking', '2026-03-20', ''],
-      ['C-03', 'prj-03', 'Grand Nirwana Regency', 'Type 45', 84, 45, 'terbangun', 'terbooking', '2026-02-01', '2026-05-05']
-    ],
-    transaksi_material: [
-      ['tr-01', 'Semen Tigaroda 50kg', 'Gudang Utama Permata', 'A-02', 'keluar', 50, '2026-05-15', 'Pekerjaan struktur pondasi dan slup', ''],
-      ['tr-02', 'Besi Beton 10mm', 'Gudang Utama Permata', 'A-02', 'keluar', 30, '2026-05-16', 'Perakitan kolom utama', ''],
-      ['tr-03', 'Semen Tigaroda 50kg', 'Gudang Utama Permata', '-', 'masuk', 100, '2026-05-20', 'Drop supply bahan PT. Semen Nusantara Prima', 'PT. Semen Nusantara Prima'],
-      ['tr-04', 'Genteng Keramik Kanmuri', 'Gudang Transit Griya', 'B-01', 'keluar', 1200, '2026-05-22', 'Pemasangan genteng blok Ruko', '']
-    ],
-    progres_pekerjaan: [
-      ['prog-01', 'A-01', 'Pak Joko Budiman', '081211112222', 'struktur', 'Pondasi & Dinding', 100, 15000000, 15000000, 'Selesai 100%'],
-      ['prog-02', 'A-01', 'Pak Slamet Riyadi', '081233334444', 'atap', 'Baja Ringan & Genteng', 100, 12000000, 12000000, 'Rangka baja ringan kokoh'],
-      ['prog-03', 'A-01', 'Pak Ahmad K', '081255556666', 'plafon', 'Papan gipsum & cat plafon', 100, 8000000, 8000000, 'Selesai rapi'],
-      ['prog-04', 'A-02', 'Pak Joko Budiman', '081211112222', 'struktur', 'Balok & Plaster Dinding', 90, 15000000, 13500000, 'Balok gantung selesai, dinding tinggal diaci'],
-      ['prog-05', 'A-02', 'Pak Slamet Riyadi', '081233334444', 'atap', 'Rangka kuda-kuda kayu/baja', 40, 11000000, 4400000, 'Sedang pasang kuda-kuda pertama'],
-      ['prog-06', 'A-02', 'Pak Sugeng Widodo', '081277778888', 'listrik', 'Instalasi stopkontak & kabel', 30, 6000000, 1800000, 'Pipa tertanam 70%, kabel ditarik sebagian'],
-      ['prog-07', 'B-01', 'Pak Joko Budiman', '081211112222', 'struktur', 'Semenisasi Lantai', 15, 14000000, 2100000, 'Urugan pasir matang'],
-      ['prog-08', 'B-02', 'Pak Ahmad K', '081255556666', 'plafon', 'Plafon Drop Ceiling', 100, 10000000, 10000000, 'Sangat rapi sesuai konsep']
-    ],
-    rincian_pembayaran: [
-      ['pay-01', 'Pak Joko Budiman', 'struktur', 12000000, '2026-05-10', 'Griya Harmony Cluster', 'B-01'],
-      ['pay-02', 'Pak Slamet Riyadi', 'atap', 10000000, '2026-05-12', 'Permata Hijau Residence', 'A-01'],
-      ['pay-03', 'Pak Ahmad K', 'plafon', 15000000, '2026-05-14', 'Griya Harmony Cluster', 'B-02']
-    ],
-    karyawan: [
-      ['kar-01', 'Adi Wijaya, S.T.', 'Site Manager', 9500000, '2025-01-15'],
-      ['kar-02', 'Dina Lestari', 'Logistik Gudang', 4800000, '2025-06-01'],
-      ['kar-03', 'Budi Saputra', 'Supervisor Lapangan', 6800000, '2025-03-10'],
-      ['kar-04', 'Siti Rahmawati', 'Administrasi Projek', 4500000, '2025-08-20']
-    ],
-    absensi_karyawan: [
-      ['abs-01', '2026-05-28', '07:45', 'kar-01', 'Adi Wijaya, S.T.', 'Hadir'],
-      ['abs-02', '2026-05-28', '07:55', 'kar-02', 'Dina Lestari', 'Hadir'],
-      ['abs-03', '2026-05-28', '08:15', 'kar-03', 'Budi Saputra', 'Hadir'],
-      ['abs-04', '2026-05-28', '-', 'kar-04', 'Siti Rahmawati', 'Izin'],
-      ['abs-05', '2026-05-27', '07:40', 'kar-01', 'Adi Wijaya, S.T.', 'Hadir'],
-      ['abs-06', '2026-05-27', '07:50', 'kar-02', 'Dina Lestari', 'Hadir']
-    ],
-    absensi_pekerja: [
-      ['absp-01', '2026-05-28', 'Pak Joko Budiman', 'Hadir', 'Mulai pasang dinding bata'],
-      ['absp-02', '2026-05-28', 'Pak Slamet Riyadi', 'Hadir', 'Pasang balok kayu atap'],
-      ['absp-03', '2026-05-28', 'Pak Ahmad K', 'Hadir', 'Finishing plafon'],
-      ['absp-04', '2026-05-28', 'Pak Sugeng Widodo', 'Izin', 'Acara keluarga']
-    ],
-    pekerja: [
-      ['pekerja-01', 'Pak Joko Budiman', '081211112222', 'struktur'],
-      ['pekerja-02', 'Pak Slamet Riyadi', '081233334444', 'atap'],
-      ['pekerja-03', 'Pak Ahmad K', '081255556666', 'plafon'],
-      ['pekerja-04', 'Pak Sugeng Widodo', '081277778888', 'listrik'],
-      ['pekerja-05', 'Pak Supri', '081299990000', 'pembersihan']
-    ],
-    leads_penjualan: [
-      ['led-01', 'Muhammad Farhan', 'Permata Hijau Residence', 'A-01', 'Rian Firdaus', 'akad', '081234567891', '2026-05-10'],
-      ['led-02', 'Dewi Anggraini', 'Permata Hijau Residence', 'A-02', 'Sarah Amalia', 'pmberkasan', '085787654321', '2026-05-12'],
-      ['led-03', 'Hendra Setiawan', 'Griya Harmony Cluster', 'B-01', 'Sarah Amalia', 'dp', '081298765430', '2026-05-15'],
-      ['led-04', 'Lilis Karlina', 'Griya Harmony Cluster', 'B-02', 'Rian Firdaus', 'akad', '089676543210', '2026-05-18'],
-      ['led-05', 'Joko Susilo', 'Grand Nirwana Regency', 'C-02', 'Andi Wijaya', 'booking', '085209876543', '2026-05-20'],
-      ['led-06', 'Rina Herawati', 'Grand Nirwana Regency', 'C-03', 'Sarah Amalia', 'tunggu akad', '081345678901', '2026-05-22']
-    ],
-    fee_marketing: [
-      ['fee-01', 'Rian Firdaus', 12500000, 'Lunas', '2026-04-30', '081223344556', 'Permata Hijau Residence', 'A-01'],
-      ['fee-02', 'Sarah Amalia', 8000000, 'Belum Bayar', '-', '085711223344', 'Griya Harmony Cluster', 'B-01'],
-      ['fee-03', 'Andi Wijaya', 5000000, 'Belum Bayar', '-', '081399887766', 'Grand Nirwana Regency', 'C-02'],
-      ['fee-04', 'Rian Firdaus', 15000000, 'Lunas', '2026-05-20', '081223344556', 'Permata Hijau Residence', 'A-02']
-    ]
-  };
-
-  Object.keys(seedMap).forEach(tableName => {
-    const sheet = ss.getSheetByName(tableName);
-    if (sheet && sheet.getLastRow() <= 1) {
-      const rows = seedMap[tableName];
-      if (rows && rows.length > 0) {
-        sheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
-      }
-    }
-  });
 }
 
 /**

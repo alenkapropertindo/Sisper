@@ -991,96 +991,6 @@ export default function AddRecordModal({
             </>
           )}
 
-          {/* 6b. Template RAB Baru */}
-          {type === 'rab_template' && (
-            <>
-              <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Nama Template RAB*</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: RAB Standar Type 36, RAB Type 45 Premium"
-                  value={formData.namaRab || ''}
-                  onChange={(e) => handleChange('namaRab', e.target.value)}
-                  className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Keterangan / Spesifikasi</label>
-                <textarea
-                  rows={3}
-                  placeholder="Deskripsi spesifikasi material (misal: dinding bata merah, atap baja ringan)"
-                  value={formData.keterangan || ''}
-                  onChange={(e) => handleChange('keterangan', e.target.value)}
-                  className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-              </div>
-            </>
-          )}
-
-          {/* 6c. Standar Material RAB Detail */}
-          {type === 'rab_detail' && (
-            <>
-              <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Template RAB Tujuan*</label>
-                <select
-                  value={formData.rabId || ''}
-                  onChange={(e) => handleChange('rabId', e.target.value)}
-                  className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200"
-                >
-                  {rabTemplateList.map((r) => (
-                    <option key={r.id} value={r.id}>{r.namaRab}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Pilih Material*</label>
-                <select
-                  value={formData.namaMaterial || ''}
-                  onChange={(e) => {
-                    const selected = inventoryList.find(i => i.namaMaterial === e.target.value);
-                    handleChange('namaMaterial', e.target.value);
-                    if (selected?.satuan) {
-                      handleChange('satuan', selected.satuan);
-                    }
-                  }}
-                  className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200"
-                >
-                  <option value="">-- Pilih Material dari Gudang --</option>
-                  {inventoryList.map((i) => (
-                    <option key={i.id} value={i.namaMaterial}>{i.namaMaterial} ({i.satuan})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-600 block mb-1">Qty Standar per 1 Unit Rumah*</label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    placeholder="Contoh: 70"
-                    value={formData.qtyStandar || ''}
-                    onChange={(e) => handleChange('qtyStandar', e.target.value)}
-                    className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 font-bold text-indigo-600"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-600 block mb-1">Satuan</label>
-                  <input
-                    type="text"
-                    placeholder="Sak, Batang, Pcs"
-                    value={formData.satuan || ''}
-                    onChange={(e) => handleChange('satuan', e.target.value)}
-                    className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200"
-                  />
-                </div>
-              </div>
-            </>
-          )}
-
           {/* 7. Catat Pembayaran Gaji Tukang */}
           {type === 'pembayaran' && (
             <>
@@ -1537,24 +1447,24 @@ export default function AddRecordModal({
           {type === 'rab_template' && (
             <>
               <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Nama Template RAB*</label>
+                <label className="text-xs font-black text-black block mb-1">Nama Template RAB*</label>
                 <input
                   type="text"
                   required
                   placeholder="Contoh: RAB Standar Type 36 & 45"
                   value={formData.namaRab || ''}
                   onChange={(e) => handleChange('namaRab', e.target.value)}
-                  className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200"
+                  className="w-full text-sm font-semibold text-black rounded-xl px-3 py-2 bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-black"
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Keterangan / Deskripsi Standar</label>
+                <label className="text-xs font-black text-black block mb-1">Keterangan / Deskripsi Standar</label>
                 <textarea
                   rows={3}
                   placeholder="Contoh: Standar material bata merah, rangka baja ringan, genteng keramik per 1 unit rumah"
                   value={formData.keterangan || ''}
                   onChange={(e) => handleChange('keterangan', e.target.value)}
-                  className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200"
+                  className="w-full text-sm font-semibold text-black rounded-xl px-3 py-2 bg-white border border-slate-300 focus:outline-none focus:ring-2 focus:ring-black"
                 />
               </div>
             </>
@@ -1564,11 +1474,11 @@ export default function AddRecordModal({
           {type === 'rab_detail' && (
             <>
               <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Pilih Template RAB Sasaran*</label>
+                <label className="text-xs font-black text-black block mb-1">Pilih Template RAB Sasaran*</label>
                 <select
                   value={formData.rabId || ''}
                   onChange={(e) => handleChange('rabId', e.target.value)}
-                  className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 font-semibold text-slate-700"
+                  className="w-full text-sm font-bold text-black rounded-xl px-3 py-2 bg-white border border-slate-300"
                 >
                   {rabTemplateList.map((r) => (
                     <option key={r.id} value={r.id}>{r.namaRab}</option>
@@ -1577,7 +1487,7 @@ export default function AddRecordModal({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Pilih dari Katalog Stok Material (Otomatis Isi)</label>
+                <label className="text-xs font-black text-black block mb-1">Pilih dari Katalog Stok Material (Otomatis Isi)</label>
                 <select
                   value=""
                   onChange={(e) => {
@@ -1590,7 +1500,7 @@ export default function AddRecordModal({
                       }));
                     }
                   }}
-                  className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 text-slate-600 mb-2"
+                  className="w-full text-sm font-semibold text-black rounded-xl px-3 py-2 bg-white border border-slate-300 mb-2"
                 >
                   <option value="">-- Pilih Material dari Inventory Gudang --</option>
                   {inventoryList.map((i) => (
@@ -1601,31 +1511,31 @@ export default function AddRecordModal({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-600 block mb-1">Nama Material*</label>
+                  <label className="text-xs font-black text-black block mb-1">Nama Material*</label>
                   <input
                     type="text"
                     required
                     placeholder="Contoh: Semen Tigaroda 50kg"
                     value={formData.namaMaterial || ''}
                     onChange={(e) => handleChange('namaMaterial', e.target.value)}
-                    className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200"
+                    className="w-full text-sm font-semibold text-black rounded-xl px-3 py-2 bg-white border border-slate-300"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-600 block mb-1">Satuan*</label>
+                  <label className="text-xs font-black text-black block mb-1">Satuan*</label>
                   <input
                     type="text"
                     required
                     placeholder="Sak, Batang, M3, Pcs, Lembar"
                     value={formData.satuan || ''}
                     onChange={(e) => handleChange('satuan', e.target.value)}
-                    className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200"
+                    className="w-full text-sm font-semibold text-black rounded-xl px-3 py-2 bg-white border border-slate-300"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Kuantitas Standar (Qty per 1 Unit Rumah)*</label>
+                <label className="text-xs font-black text-black block mb-1">Kuantitas Standar (Qty per 1 Unit Rumah)*</label>
                 <input
                   type="number"
                   required
@@ -1634,9 +1544,9 @@ export default function AddRecordModal({
                   placeholder="Contoh: 70"
                   value={formData.qtyStandar || ''}
                   onChange={(e) => handleChange('qtyStandar', e.target.value)}
-                  className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 font-mono font-bold text-indigo-600"
+                  className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-300 font-mono font-black text-black"
                 />
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-[11px] font-semibold text-black mt-1">
                   Standar ini berlaku untuk setiap unit rumah di proyek yang menggunakan template RAB ini.
                 </p>
               </div>

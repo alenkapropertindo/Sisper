@@ -17,7 +17,8 @@ import {
   Wallet,
   Users,
   LogOut,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Gauge
 } from 'lucide-react';
 
 // Import types
@@ -42,6 +43,7 @@ import {
 
 // Import subcomponents
 import DashboardView from './components/DashboardView';
+import KpiView from './components/KpiView';
 import ConstructionView from './components/ConstructionView';
 import LogistikView from './components/LogistikView';
 import OperasionalView from './components/OperasionalView';
@@ -76,10 +78,10 @@ export default function App() {
   }, [currentUser]);
 
   // Navigation tabs
-  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'konstruksi' | 'logistik' | 'marketing' | 'operasional'>(() => {
+  const [activeTab, setActiveTab] = React.useState<'dashboard' | 'kpi' | 'konstruksi' | 'logistik' | 'marketing' | 'operasional'>(() => {
     const saved = localStorage.getItem('lastActiveTab');
-    if (saved && ['dashboard', 'konstruksi', 'logistik', 'marketing', 'operasional'].includes(saved)) {
-      return saved as 'dashboard' | 'konstruksi' | 'logistik' | 'marketing' | 'operasional';
+    if (saved && ['dashboard', 'kpi', 'konstruksi', 'logistik', 'marketing', 'operasional'].includes(saved)) {
+      return saved as 'dashboard' | 'kpi' | 'konstruksi' | 'logistik' | 'marketing' | 'operasional';
     }
     return 'dashboard';
   });
@@ -88,13 +90,13 @@ export default function App() {
     localStorage.setItem('lastActiveTab', activeTab);
   }, [activeTab]);
 
-  const isTabAllowed = (tab: 'dashboard' | 'konstruksi' | 'logistik' | 'marketing' | 'operasional') => {
+  const isTabAllowed = (tab: 'dashboard' | 'kpi' | 'konstruksi' | 'logistik' | 'marketing' | 'operasional') => {
     if (!currentUser) return false;
     const { role } = currentUser;
     if (role === 'super_admin' || role === 'admin_umum') return true;
-    if (role === 'logistik') return tab === 'dashboard' || tab === 'logistik';
-    if (role === 'pengawas') return tab === 'dashboard' || tab === 'konstruksi';
-    if (role === 'marketing') return tab === 'dashboard' || tab === 'marketing';
+    if (role === 'logistik') return tab === 'dashboard' || tab === 'kpi' || tab === 'logistik';
+    if (role === 'pengawas') return tab === 'dashboard' || tab === 'kpi' || tab === 'konstruksi';
+    if (role === 'marketing') return tab === 'dashboard' || tab === 'kpi' || tab === 'marketing';
     return false;
   };
 
@@ -103,6 +105,8 @@ export default function App() {
     if (currentUser && !isTabAllowed(activeTab)) {
       if (isTabAllowed('dashboard')) {
         setActiveTab('dashboard');
+      } else if (isTabAllowed('kpi')) {
+        setActiveTab('kpi');
       } else if (isTabAllowed('konstruksi')) {
         setActiveTab('konstruksi');
       } else if (isTabAllowed('logistik')) {
@@ -130,7 +134,7 @@ export default function App() {
   const [initialLogistikRekapViewMode, setInitialLogistikRekapViewMode] = React.useState<'detail' | 'semua_unit'>('detail');
 
   const navigateToTab = (
-    tab: 'dashboard' | 'konstruksi' | 'logistik' | 'marketing' | 'operasional',
+    tab: 'dashboard' | 'kpi' | 'konstruksi' | 'logistik' | 'marketing' | 'operasional',
     options?: { 
       subTab?: string; 
       search?: string; 
@@ -246,17 +250,11 @@ export default function App() {
       if (resLeads.error) throw resLeads.error;
       if (resFee.error) throw resFee.error;
 
-      // 3. Populate state if records found
-      if (resProjects.data.length === 0) {
-        setDbStatus('connected');
-        setDbStatusMessage('Terhubung ke Google Sheets (Sheet masih kosong, klik "Buat 15 Sheet Otomatis")');
-        return;
-      }
-
-      setProjects(resProjects.data);
-      setGudangList(resGudang.data);
-      setSupplierList(resSuppliers.data);
-      setInventoryList(resInventory.data);
+      // 3. Populate state directly from database records
+      setProjects(resProjects.data || []);
+      setGudangList(resGudang.data || []);
+      setSupplierList(resSuppliers.data || []);
+      setInventoryList(resInventory.data || []);
       // Normalize konstruksi data to handle both camelCase and snake_case column names
       const loadedProjects: Project[] = resProjects.data || [];
       const normalizedKonstruksi = (resKonstruksi.data || []).map((row: any) => {
@@ -278,20 +276,20 @@ export default function App() {
         };
       });
       setKonstruksiList(normalizedKonstruksi);
-      setTransaksiList(resTransaksi.data);
-      setProgresList(resProgres.data);
-      setPembayaranList(resPembayaran.data);
-      setKaryawanList(resKaryawan.data);
-      setAbsensiList(resAbsensi.data);
-      setAbsensiPekerjaList(resAbsensiPekerja.data);
-      setLeadList(resLeads.data);
-      setFeeList(resFee.data);
+      setTransaksiList(resTransaksi.data || []);
+      setProgresList(resProgres.data || []);
+      setPembayaranList(resPembayaran.data || []);
+      setKaryawanList(resKaryawan.data || []);
+      setAbsensiList(resAbsensi.data || []);
+      setAbsensiPekerjaList(resAbsensiPekerja.data || []);
+      setLeadList(resLeads.data || []);
+      setFeeList(resFee.data || []);
       setRabTemplateList(resRabTemplate.data || []);
       setRabDetailList(resRabDetail.data || []);
 
       try {
         const { data: pekerjaRes, error: pekerjaErr } = await supabase.from('pekerja').select('*');
-        if (!pekerjaErr && pekerjaRes && pekerjaRes.length > 0) {
+        if (!pekerjaErr && pekerjaRes) {
           setPekerjaList(pekerjaRes);
         }
       } catch (pekerjaErr) {
@@ -300,7 +298,7 @@ export default function App() {
 
       const activeUrl = getAppsScriptUrl();
       setDbStatus(activeUrl ? 'connected' : 'local');
-      setDbStatusMessage(activeUrl ? 'Terhubung dengan Google Sheets!' : 'Mode Demo Lokal (Belum terhubung ke Google Sheets)');
+      setDbStatusMessage(activeUrl ? 'Terhubung dengan Google Sheets!' : 'Database siap terhubung ke Google Sheets');
     } catch (err: any) {
       console.warn('Gagal memuat data Google Sheets, mengaktifkan modus offline:', err);
       setDbStatus('local');
@@ -312,34 +310,6 @@ export default function App() {
   React.useEffect(() => {
     loadSupabaseData();
   }, [loadSupabaseData]);
-
-  // Synchronize/seed pekerjaList with unique workers from existing data if pekerjaList is empty
-  React.useEffect(() => {
-    if (progresList.length > 0 && pekerjaList.length === 0) {
-      const map = new Map<string, { namaTukang: string; kategoriPekerjaan: any; noHp: string }>();
-      progresList.forEach((p) => {
-        const name = p.namaTukang?.trim();
-        if (!name || name === 'Belum Ditunjuk') return;
-        const key = name.toLowerCase();
-        if (!map.has(key)) {
-          map.set(key, {
-            namaTukang: name,
-            kategoriPekerjaan: p.kategoriPekerjaan,
-            noHp: p.noHp || '-'
-          });
-        }
-      });
-      if (map.size > 0) {
-        const generated: Pekerja[] = Array.from(map.values()).map((v, idx) => ({
-          id: `pekerja-seed-${idx}`,
-          namaTukang: v.namaTukang,
-          noHp: v.noHp,
-          kategoriPekerjaan: v.kategoriPekerjaan
-        }));
-        setPekerjaList(generated);
-      }
-    }
-  }, [progresList, pekerjaList.length]);
 
   const handleUpdateLeadStatus = React.useCallback((id: string, newStatus: LeadPenjualan['leadStatus']) => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -1013,6 +983,20 @@ export default function App() {
               </button>
             )}
 
+            {isTabAllowed('kpi') && (
+              <button
+                onClick={() => navigateToTab('kpi')}
+                className={`w-full justify-start text-left flex items-center gap-3.5 px-4 py-3.5 text-xs sm:text-sm font-black rounded-2xl transition-all duration-150 cursor-pointer ${
+                  activeTab === 'kpi'
+                    ? 'shadow-[inset_3px_3px_6px_rgba(163,177,198,0.55),inset_-3px_-3px_6px_rgba(255,255,255,0.85)] text-black border border-slate-400/50'
+                    : 'text-black hover:shadow-[3px_3px_6px_rgba(163,177,198,0.35),-3px_-3px_6px_rgba(255,255,255,0.7)] hover:text-black'
+                }`}
+              >
+                <Gauge size={18} className="text-black" />
+                KPI
+              </button>
+            )}
+
             {isTabAllowed('konstruksi') && (
               <button
                 onClick={() => navigateToTab('konstruksi')}
@@ -1169,6 +1153,25 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'kpi' && (
+              <KpiView 
+                projects={projects}
+                selectedProjectId={selectedProjectId}
+                setSelectedProjectId={setSelectedProjectId}
+                inventoryList={inventoryList}
+                konstruksiList={konstruksiList}
+                transaksiList={transaksiList}
+                rabTemplateList={rabTemplateList}
+                rabDetailList={rabDetailList}
+                progresList={progresList}
+                karyawanList={karyawanList}
+                absensiList={absensiList}
+                pekerjaList={pekerjaList}
+                absensiPekerjaList={absensiPekerjaList}
+                onNavigateTab={(tab, subTab) => navigateToTab(tab, { subTab })}
+              />
+            )}
+
             {activeTab === 'konstruksi' && (
               <ConstructionView 
                 projects={projects}
@@ -1282,6 +1285,18 @@ export default function App() {
                 >
                   <BarChart3 size={16} className="text-black" />
                   Overview & Dashboard
+                </button>
+              )}
+
+              {isTabAllowed('kpi') && (
+                <button
+                  onClick={() => { setActiveTab('kpi'); setIsMobileMenuOpen(false); }}
+                  className={`flex items-center gap-3 px-3 py-3.5 text-xs sm:text-sm font-black rounded-xl transition ${
+                    activeTab === 'kpi' ? 'bg-slate-200/90 text-black' : 'text-black hover:bg-slate-100 hover:text-black'
+                  }`}
+                >
+                  <Gauge size={16} className="text-black" />
+                  KPI
                 </button>
               )}
 

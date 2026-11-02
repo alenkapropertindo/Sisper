@@ -207,7 +207,10 @@ export default function FinansialView({
                         <div className="w-20 bg-slate-100 h-1.5 rounded-full overflow-hidden">
                           <div 
                             className="bg-gradient-to-r from-emerald-400 to-emerald-500 h-1.5 rounded-full"
-                            style={{ width: `${Math.min(100, opn.persenTerbayar)}%` }}
+                            style={{ 
+                              width: `${Math.min(100, opn.persenTerbayar)}%`,
+                              background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)'
+                            }}
                           />
                         </div>
                       </div>
