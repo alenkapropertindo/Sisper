@@ -5,7 +5,7 @@ import { Project, Gudang, Karyawan, Konstruksi, Inventory, ProgresPekerjaan, Pek
 interface AddRecordModalProps {
   isOpen: boolean;
   onClose: () => void;
-  type: 'konstruksi' | 'progres' | 'inventory' | 'gudang' | 'supplier' | 'transaksi' | 'pembayaran' | 'fee' | 'karyawan' | 'absensi' | 'absensi_pekerja' | 'lead' | 'rab_template' | 'rab_detail' | '';
+  type: 'project' | 'konstruksi' | 'progres' | 'inventory' | 'gudang' | 'supplier' | 'transaksi' | 'pembayaran' | 'fee' | 'karyawan' | 'absensi' | 'absensi_pekerja' | 'lead' | 'rab_template' | 'rab_detail' | '';
   projects: Project[];
   gudangList: Gudang[];
   karyawanList: Karyawan[];
@@ -19,6 +19,7 @@ interface AddRecordModalProps {
   transaksiList?: TransaksiMaterial[];
   defaultRabId?: string;
   onSave: (data: any) => void;
+  onOpenAddProject?: () => void;
 }
 
 export default function AddRecordModal({
@@ -38,6 +39,7 @@ export default function AddRecordModal({
   transaksiList = [],
   defaultRabId = '',
   onSave,
+  onOpenAddProject,
 }: AddRecordModalProps) {
   if (!isOpen || !type) return null;
 
@@ -126,7 +128,14 @@ export default function AddRecordModal({
   React.useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
     
-    if (type === 'konstruksi') {
+    if (type === 'project') {
+      setFormData({
+        id: '',
+        name: '',
+        location: '',
+        rabId: rabTemplateList[0]?.id || '',
+      });
+    } else if (type === 'konstruksi') {
       setFormData({
         id: '',
         projectId: projects[0]?.id || '',
@@ -215,8 +224,8 @@ export default function AddRecordModal({
     } else if (type === 'karyawan') {
       setFormData({
         namaKaryawan: '',
-        jabatan: 'Staff Logistik',
-        gajiHarian: 4000000,
+        jabatan: 'Staff Teknis',
+        whatsup: '',
         tanggalGabung: today,
       });
     } else if (type === 'absensi') {
@@ -263,7 +272,7 @@ export default function AddRecordModal({
   const handleChange = (key: string, value: any) => {
     let finalValue = value;
     // Safely parse number variables
-    if (['luasTanah', 'luasBangunan', 'jumlahStok', 'minimumStock', 'harga', 'jumlah', 'persentasiProgres', 'nilaiPekerjaan', 'nilaiPembayaran', 'komisi', 'gajiHarian'].includes(key)) {
+    if (['luasTanah', 'luasBangunan', 'jumlahStok', 'minimumStock', 'harga', 'jumlah', 'persentasiProgres', 'nilaiPekerjaan', 'nilaiPembayaran', 'komisi'].includes(key)) {
       finalValue = value === '' ? '' : (Number(value) || 0);
     }
 
@@ -301,6 +310,10 @@ export default function AddRecordModal({
     e.preventDefault();
 
     // Custom Validation
+    if (type === 'project' && (!formData.name || !formData.location)) {
+       setErrorMsg('Mohon lengkapi Nama Projek dan Lokasi Perumahan.');
+       return;
+    }
     if (type === 'konstruksi' && !formData.id) {
        setErrorMsg('Mohon isi Nomor Blok Rumah (misal: A-12)');
        return;
@@ -349,6 +362,7 @@ export default function AddRecordModal({
 
   const getModalTitle = () => {
     switch (type) {
+      case 'project': return 'Tambah Projek Perumahan Baru';
       case 'konstruksi': return 'Tambah Unit Blok';
       case 'progres': return 'Input Progres Pekerjaan';
       case 'inventory': return 'Tambah Stok Material';
@@ -398,6 +412,64 @@ export default function AddRecordModal({
             </div>
           )}
 
+          {/* 0. Form Projek Perumahan Baru */}
+          {type === 'project' && (
+            <>
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Nama Projek Perumahan*</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Grand Permata Residence"
+                  value={formData.name || ''}
+                  onChange={(e) => handleChange('name', e.target.value)}
+                  className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 font-semibold text-black"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Lokasi / Alamat Projek*</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Jl. Sudirman KM 5, Palembang"
+                  value={formData.location || ''}
+                  onChange={(e) => handleChange('location', e.target.value)}
+                  className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 font-semibold text-black"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Kode / ID Projek (Opsional)</label>
+                  <input
+                    type="text"
+                    placeholder="Auto: proj-xxxx"
+                    value={formData.id || ''}
+                    onChange={(e) => handleChange('id', e.target.value)}
+                    className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 font-semibold text-black"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">Biarkan kosong untuk ID otomatis</span>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Template RAB Standar</label>
+                  <select
+                    value={formData.rabId || ''}
+                    onChange={(e) => handleChange('rabId', e.target.value)}
+                    className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 font-semibold text-black"
+                  >
+                    <option value="">-- Tanpa Template RAB --</option>
+                    {rabTemplateList.map((r) => (
+                      <option key={r.id} value={r.id}>{r.namaRab}</option>
+                    ))}
+                  </select>
+                  <span className="text-[10px] text-slate-400 mt-1 block">Acuan batas material unit rumah</span>
+                </div>
+              </div>
+            </>
+          )}
+
           {/* 1. Kofigurasi Konstruksi */}
           {type === 'konstruksi' && (
             <>
@@ -410,20 +482,52 @@ export default function AddRecordModal({
                     placeholder="Contoh: A-04"
                     value={formData.id || ''}
                     onChange={(e) => handleChange('id', e.target.value.toUpperCase())}
-                    className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 font-semibold text-black"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-600 block mb-1">Projek Perumahan</label>
-                  <select
-                    value={formData.projectId || ''}
-                    onChange={(e) => handleChange('projectId', e.target.value)}
-                    className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                  >
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-600 block">Projek Perumahan*</label>
+                    {onOpenAddProject && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onOpenAddProject();
+                        }}
+                        className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                      >
+                        + Buat Baru
+                      </button>
+                    )}
+                  </div>
+                  {projects.length === 0 ? (
+                    <div className="p-2 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 flex flex-col gap-1">
+                      <span>Belum ada data projek.</span>
+                      {onOpenAddProject && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            onOpenAddProject();
+                          }}
+                          className="self-start text-[10px] font-bold px-2 py-0.5 bg-amber-600 text-white rounded-md cursor-pointer"
+                        >
+                          + Tambah Projek
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <select
+                      value={formData.projectId || ''}
+                      onChange={(e) => handleChange('projectId', e.target.value)}
+                      className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 font-semibold text-black"
+                    >
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -1201,23 +1305,21 @@ export default function AddRecordModal({
                   <label className="text-xs font-bold text-slate-600 block mb-1">Jabatan Operasional</label>
                   <input
                     type="text"
-                    placeholder="Supervisor Lapangan, HRD"
+                    placeholder="Staff Teknis, Admin Berkas, Marketing"
                     value={formData.jabatan || ''}
                     onChange={(e) => handleChange('jabatan', e.target.value)}
                     className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-600 block mb-1">Gaji Bulan (IDR)</label>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">Nomor WhatsApp / HP</label>
                   <input
-                    type="number"
-                    value={formData.gajiHarian || 4000000}
-                    onChange={(e) => handleChange('gajiHarian', e.target.value)}
-                    className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200"
+                    type="text"
+                    placeholder="Contoh: 082264345250"
+                    value={formData.whatsup || ''}
+                    onChange={(e) => handleChange('whatsup', e.target.value)}
+                    className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 font-mono"
                   />
-                  <div className="mt-1.5 text-xs font-mono font-black text-black bg-slate-200 px-2.5 py-1.5 rounded-lg border border-slate-300 inline-flex items-center gap-1.5 shadow-sm">
-                    <span>Terformat: Rp {Number(formData.gajiHarian || 4000000).toLocaleString('id-ID')}</span>
-                  </div>
                 </div>
               </div>
 

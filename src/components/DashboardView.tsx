@@ -14,7 +14,8 @@ import {
   Package,
   Coins,
   Search,
-  ShieldCheck
+  ShieldCheck,
+  PlusCircle
 } from 'lucide-react';
 import { 
   Project, 
@@ -40,6 +41,7 @@ interface DashboardViewProps {
   rabDetailList?: RabDetail[];
   selectedProjectId: string;
   setSelectedProjectId: (id: string) => void;
+  onAddProject?: () => void;
   onNavigate?: (
     tab: 'dashboard' | 'konstruksi' | 'logistik' | 'marketing' | 'operasional', 
     options?: { 
@@ -201,6 +203,7 @@ export default function DashboardView({
   rabDetailList = [],
   selectedProjectId,
   setSelectedProjectId,
+  onAddProject,
   onNavigate,
 }: DashboardViewProps) {
 
@@ -577,7 +580,7 @@ export default function DashboardView({
         </div>
         
         {/* Project Selector */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <span className="text-xs font-black text-black uppercase tracking-wider">Filter Projek:</span>
           <select
             value={selectedProjectId}
@@ -591,6 +594,16 @@ export default function DashboardView({
               </option>
             ))}
           </select>
+          {onAddProject && (
+            <button
+              onClick={onAddProject}
+              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-[#e0e5ec] shadow-[3px_3px_6px_rgba(163,177,198,0.5),-3px_-3px_6px_rgba(255,255,255,0.85)] hover:shadow-[1px_1px_3px_rgba(163,177,198,0.6),-1px_-1px_3px_rgba(255,255,255,0.95)] active:shadow-[inset_2px_2px_4px_rgba(163,177,198,0.6)] text-xs font-black text-black transition cursor-pointer"
+              title="Tambah Projek Perumahan Baru"
+            >
+              <PlusCircle size={15} className="text-black" />
+              <span>+ Tambah Projek</span>
+            </button>
+          )}
         </div>
       </div>
 

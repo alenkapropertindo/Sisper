@@ -5,7 +5,8 @@ import {
   Search, 
   UserPlus, 
   FileSpreadsheet,
-  Wrench
+  Wrench,
+  Phone
 } from 'lucide-react';
 import { Karyawan, AbsensiKaryawan, ProgresPekerjaan, AbsensiPekerja, Pekerja } from '../types';
 
@@ -393,25 +394,47 @@ export default function OperasionalView({
               <tr className="border-b border-slate-300/60 text-black text-[11px] uppercase tracking-wider font-display font-black">
                 <th className="p-4">Nama Lengkap</th>
                 <th className="p-4">Jabatan / Role</th>
-                <th className="p-4 text-right font-mono">Gaji Bulanan</th>
+                <th className="p-4">WhatsApp / Telepon</th>
+                <th className="p-4 text-right">Tanggal Bergabung</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-300/40 text-black">
-              {filteredKaryawan.map((kar) => (
-                <tr key={kar.id} className="hover:bg-slate-200/50 transition">
-                  <td className="p-4">
-                    <div className="font-display font-black text-black text-[15px]">{kar.namaKaryawan}</div>
-                    <div className="text-[11px] text-black font-semibold mt-0.5">Bergabung: {kar.tanggalGabung}</div>
-                  </td>
-                  <td className="p-4 text-black font-bold">{kar.jabatan}</td>
-                  <td className="p-4 text-right font-mono text-xs text-black font-black">
-                    {formatRupiah(kar.gajiHarian)}
-                  </td>
-                </tr>
-              ))}
+              {filteredKaryawan.map((kar) => {
+                const cleanPhone = (kar.whatsup || '').replace(/[^0-9]/g, '');
+                const waLink = cleanPhone ? (cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone.startsWith('62') ? cleanPhone : '62' + cleanPhone) : '';
+
+                return (
+                  <tr key={kar.id} className="hover:bg-slate-200/50 transition">
+                    <td className="p-4">
+                      <div className="font-display font-black text-black text-[15px]">{kar.namaKaryawan}</div>
+                      <div className="text-[11px] text-black font-semibold mt-0.5">ID: {kar.id}</div>
+                    </td>
+                    <td className="p-4 text-black font-bold">{kar.jabatan}</td>
+                    <td className="p-4">
+                      {kar.whatsup ? (
+                        <a
+                          href={`https://wa.me/${waLink}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 rounded-xl text-black font-mono font-black text-xs border border-slate-300 shadow-xs transition cursor-pointer"
+                          title="Hubungi via WhatsApp"
+                        >
+                          <Phone size={13} className="text-black" />
+                          <span>{kar.whatsup}</span>
+                        </a>
+                      ) : (
+                        <span className="text-black/60 italic text-xs">-</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-right font-mono text-xs text-black font-black">
+                      {kar.tanggalGabung || '-'}
+                    </td>
+                  </tr>
+                );
+              })}
               {filteredKaryawan.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="p-8 text-center text-black font-semibold text-xs italic">
+                  <td colSpan={4} className="p-8 text-center text-black font-semibold text-xs italic">
                     Tidak ada karyawan yang terdaftar atau cocok dengan pencarian.
                   </td>
                 </tr>

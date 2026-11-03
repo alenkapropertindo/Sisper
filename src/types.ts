@@ -108,7 +108,7 @@ export interface Karyawan {
   id: string;
   namaKaryawan: string;
   jabatan: string;
-  gajiHarian: number;
+  whatsup?: string;
   tanggalGabung: string;
 }
 

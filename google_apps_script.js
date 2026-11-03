@@ -30,7 +30,7 @@ const SCHEMA = {
   transaksi_material: ['id', 'namaMaterial', 'namaGudang', 'blokRumah', 'type', 'jumlah', 'tanggal', 'catatan', 'supplier'],
   progres_pekerjaan: ['id', 'blokRumah', 'namaTukang', 'noHp', 'kategoriPekerjaan', 'itemPekerjaan', 'persentasiProgres', 'nilaiPekerjaan', 'totalNilaiPekerjaan', 'catatan'],
   rincian_pembayaran: ['id', 'namaTukang', 'kategoriPekerjaan', 'nilaiPembayaran', 'tanggalPembayaran', 'namaProjek', 'namaBlok'],
-  karyawan: ['id', 'namaKaryawan', 'jabatan', 'gajiHarian', 'tanggalGabung'],
+  karyawan: ['id', 'namaKaryawan', 'jabatan', 'whatsup', 'tanggalGabung'],
   absensi_karyawan: ['id', 'tanggal', 'waktuCheckin', 'karyawanId', 'namaKaryawan', 'statusKehadiran'],
   absensi_pekerja: ['id', 'tanggal', 'namaTukang', 'statusKehadiran', 'keterangan'],
   pekerja: ['id', 'namaTukang', 'noHp', 'kategoriPekerjaan'],
@@ -41,7 +41,7 @@ const SCHEMA = {
 const NUMERIC_FIELDS = [
   'luasTanah', 'luasBangunan', 'jumlahStok', 'minimumStock', 'harga',
   'jumlah', 'persentasiProgres', 'nilaiPekerjaan', 'totalNilaiPekerjaan',
-  'nilaiPembayaran', 'gajiHarian', 'komisi', 'qtyStandar'
+  'nilaiPembayaran', 'komisi', 'qtyStandar'
 ];
 
 /**
@@ -110,10 +110,43 @@ function setupDatabase() {
 }
 
 /**
+ * Helper fleksibel untuk menemukan sheet berdasarkan nama tabel
+ * Mendukung pencocokan nama jamak/tunggal (contoh: 'projects' vs 'project') dan case-insensitive
+ */
+function findSheet(ss, tableName) {
+  if (!ss || !tableName) return null;
+  // 1. Cek nama persis
+  let sheet = ss.getSheetByName(tableName);
+  if (sheet) return sheet;
+
+  // 2. Cek variasi jamak / tunggal (misal 'projects' -> 'project' atau sebaliknya)
+  if (tableName.endsWith('s')) {
+    sheet = ss.getSheetByName(tableName.slice(0, -1));
+    if (sheet) return sheet;
+  } else {
+    sheet = ss.getSheetByName(tableName + 's');
+    if (sheet) return sheet;
+  }
+
+  // 3. Cek case-insensitive terhadap seluruh tab sheet
+  const allSheets = ss.getSheets();
+  const targetLower = tableName.toLowerCase();
+  for (let i = 0; i < allSheets.length; i++) {
+    const sName = allSheets[i].getName().trim().toLowerCase();
+    if (sName === targetLower || 
+        (targetLower.endsWith('s') && sName === targetLower.slice(0, -1)) ||
+        (!targetLower.endsWith('s') && sName === targetLower + 's')) {
+      return allSheets[i];
+    }
+  }
+  return null;
+}
+
+/**
  * Helper untuk membaca 1 Sheet menjadi Array of Objects
  */
 function readSheetData(ss, tableName) {
-  let sheet = ss.getSheetByName(tableName);
+  let sheet = findSheet(ss, tableName);
   if (!sheet) {
     // Jika sheet belum ada, buat otomatis sesuai SCHEMA
     if (SCHEMA[tableName]) {
@@ -211,7 +244,7 @@ function doPost(e) {
     }
 
     const tableName = body.table;
-    let sheet = ss.getSheetByName(tableName);
+    let sheet = findSheet(ss, tableName);
     if (!sheet && SCHEMA[tableName]) {
       sheet = ss.insertSheet(tableName);
       sheet.getRange(1, 1, 1, SCHEMA[tableName].length).setValues([SCHEMA[tableName]]);

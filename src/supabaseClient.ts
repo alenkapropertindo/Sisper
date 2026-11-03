@@ -83,9 +83,9 @@ export async function fetchAllSheetsData(forceRefresh = false): Promise<Record<s
       const numericKeys = new Set([
         'luasTanah', 'luasBangunan', 'jumlahStok', 'minimumStock', 'harga',
         'jumlah', 'persentasiProgres', 'nilaiPekerjaan', 'totalNilaiPekerjaan',
-        'nilaiPembayaran', 'gajiHarian', 'komisi', 'qtyStandar'
+        'nilaiPembayaran', 'komisi', 'qtyStandar'
       ]);
-      const phoneKeys = new Set(['noHp', 'noWhatsapp']);
+      const phoneKeys = new Set(['noHp', 'noWhatsapp', 'whatsup', 'whatsapp']);
 
       Object.keys(rawData).forEach((table) => {
         if (Array.isArray(rawData[table])) {
@@ -110,6 +110,13 @@ export async function fetchAllSheetsData(forceRefresh = false): Promise<Record<s
           });
         }
       });
+
+      // Sinkronisasi alias tabel jamak & tunggal (misal 'project' <-> 'projects')
+      if (rawData['project'] && !rawData['projects']) {
+        rawData['projects'] = rawData['project'];
+      } else if (rawData['projects'] && !rawData['project']) {
+        rawData['project'] = rawData['projects'];
+      }
 
       cachedSnapshot = rawData;
       return cachedSnapshot!;

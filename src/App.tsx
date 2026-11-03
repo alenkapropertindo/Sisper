@@ -496,7 +496,7 @@ export default function App() {
 
   // Modal formulation state
   const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const [modalType, setModalType] = React.useState<'konstruksi' | 'progres' | 'inventory' | 'gudang' | 'supplier' | 'transaksi' | 'pembayaran' | 'fee' | 'karyawan' | 'absensi' | 'lead' | 'rab_template' | 'rab_detail' | ''>('');
+  const [modalType, setModalType] = React.useState<'project' | 'konstruksi' | 'progres' | 'inventory' | 'gudang' | 'supplier' | 'transaksi' | 'pembayaran' | 'fee' | 'karyawan' | 'absensi' | 'lead' | 'rab_template' | 'rab_detail' | ''>('');
   const [selectedDefaultRabId, setSelectedDefaultRabId] = React.useState<string>('');
 
   // Tick clock effect
@@ -532,6 +532,24 @@ export default function App() {
     const generatedId = Math.random().toString(36).substr(2, 9).toUpperCase();
 
     switch (modalType) {
+      case 'project': {
+        const cleanName = String(data.name || '').trim();
+        const cleanLocation = String(data.location || '').trim();
+        const newProject: Project = {
+          id: data.id ? String(data.id).trim() : `proj-${generatedId}`,
+          name: cleanName,
+          location: cleanLocation,
+          rabId: data.rabId ? String(data.rabId).trim() : '',
+        };
+        setProjects(prev => [...prev, newProject]);
+        showToast(`Sukses mendaftarkan projek baru: ${newProject.name}!`);
+
+        // Supabase / Google Sheets insert
+        supabase.from('projects').insert([newProject]).then(({ error }) => {
+          if (error) console.warn('Supabase insert project failed:', error.message);
+        });
+        break;
+      }
       case 'konstruksi': {
         const { 
           autoGenerateJobs, 
@@ -788,7 +806,7 @@ export default function App() {
           id: `kar-${generatedId}`,
           namaKaryawan: data.namaKaryawan,
           jabatan: data.jabatan,
-          gajiHarian: data.gajiHarian,
+          whatsup: data.whatsup || '',
           tanggalGabung: data.tanggalGabung,
         };
         setKaryawanList(prev => [...prev, newKar]);
@@ -905,6 +923,26 @@ export default function App() {
       console.warn('Update project rab failed:', err);
     }
   }, []);
+
+  const handleDeleteProject = React.useCallback(async (id: string) => {
+    const proj = projects.find(p => p.id === id);
+    if (!proj) return;
+    const unitsInProject = konstruksiList.filter(k => String(k.projectId).trim().toLowerCase() === String(id).trim().toLowerCase());
+    if (unitsInProject.length > 0) {
+      showToast(`Tidak dapat menghapus projek "${proj.name}". Masih terdapat ${unitsInProject.length} unit blok di projek ini.`);
+      return;
+    }
+    setProjects(prev => prev.filter(p => p.id !== id));
+    if (selectedProjectId === id) {
+      setSelectedProjectId('all');
+    }
+    showToast(`Projek "${proj.name}" berhasil dihapus.`);
+    try {
+      await supabase.from('projects').delete().eq('id', id);
+    } catch (err) {
+      console.warn('Delete project failed:', err);
+    }
+  }, [projects, konstruksiList, selectedProjectId]);
 
   const handleDeleteRabDetail = React.useCallback(async (id: string) => {
     setRabDetailList(prev => prev.filter(r => r.id !== id));
@@ -1149,6 +1187,7 @@ export default function App() {
                 rabDetailList={rabDetailList}
                 selectedProjectId={selectedProjectId}
                 setSelectedProjectId={setSelectedProjectId}
+                onAddProject={() => openModal('project')}
                 onNavigate={navigateToTab}
               />
             )}
@@ -1184,6 +1223,10 @@ export default function App() {
                 onAddKonstruksi={() => openModal('konstruksi')}
                 onAddProgres={() => openModal('progres')}
                 onAddPembayaran={() => openModal('pembayaran')}
+                onAddProject={() => openModal('project')}
+                onDeleteProject={handleDeleteProject}
+                onUpdateProjectRab={handleUpdateProjectRab}
+                onSelectProject={(id) => setSelectedProjectId(id)}
                 onUpdateProgres={handleUpdateProgres}
                 onUpdateKonstruksiStatus={handleUpdateKonstruksiStatus}
                 onUpdateKonstruksiSaleStatus={handleUpdateKonstruksiSaleStatus}
@@ -1191,6 +1234,7 @@ export default function App() {
                 initialSearchQuery={initialConstructionSearchQuery}
                 initialStatusFilter={initialConstructionStatusFilter}
                 pekerjaList={pekerjaList}
+                rabTemplateList={rabTemplateList}
                 currentUser={currentUser}
               />
             )}
@@ -1403,6 +1447,7 @@ export default function App() {
         transaksiList={transaksiList}
         defaultRabId={selectedDefaultRabId}
         onSave={handleSaveModal}
+        onOpenAddProject={() => openModal('project')}
       />
 
       <GoogleSheetSetupModal

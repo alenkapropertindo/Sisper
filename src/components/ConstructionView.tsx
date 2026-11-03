@@ -15,9 +15,11 @@ import {
   FileSpreadsheet,
   Activity,
   Receipt,
-  CreditCard
+  CreditCard,
+  Building2,
+  Trash2
 } from 'lucide-react';
-import { Project, Konstruksi, ProgresPekerjaan, TransaksiMaterial, Inventory, RincianPembayaran, Pekerja } from '../types';
+import { Project, Konstruksi, ProgresPekerjaan, TransaksiMaterial, Inventory, RincianPembayaran, Pekerja, RabTemplate } from '../types';
 import { UserSession } from './LoginView';
 
 interface ConstructionViewProps {
@@ -31,13 +33,18 @@ interface ConstructionViewProps {
   onAddKonstruksi: () => void;
   onAddProgres: () => void;
   onAddPembayaran: () => void;
+  onAddProject?: () => void;
+  onDeleteProject?: (id: string) => void;
+  onUpdateProjectRab?: (projectId: string, rabId: string) => void;
+  onSelectProject?: (id: string) => void;
   onUpdateProgres?: (id: string, newProgress: number, namaTukang?: string, noHp?: string) => void;
   onUpdateKonstruksiStatus?: (id: string, newStatus: Konstruksi['statusPembangunan'], tanggalSelesaiValue?: string | null) => void;
   onUpdateKonstruksiSaleStatus?: (id: string, newStatus: Konstruksi['statusPenjualan']) => void;
-  initialSubTab?: 'blok' | 'progres' | 'opname' | 'rincian';
+  initialSubTab?: 'projek' | 'blok' | 'progres' | 'opname' | 'rincian';
   initialSearchQuery?: string;
   initialStatusFilter?: string;
   pekerjaList?: Pekerja[];
+  rabTemplateList?: RabTemplate[];
   currentUser?: UserSession | null;
 }
 
@@ -52,6 +59,10 @@ export default function ConstructionView({
   onAddKonstruksi,
   onAddProgres,
   onAddPembayaran,
+  onAddProject,
+  onDeleteProject,
+  onUpdateProjectRab,
+  onSelectProject,
   onUpdateProgres,
   onUpdateKonstruksiStatus,
   onUpdateKonstruksiSaleStatus,
@@ -59,11 +70,24 @@ export default function ConstructionView({
   initialSearchQuery = '',
   initialStatusFilter = 'all',
   pekerjaList = [],
+  rabTemplateList = [],
   currentUser = null,
 }: ConstructionViewProps) {
-  const [subTab, setSubTab] = React.useState<'blok' | 'progres' | 'opname' | 'rincian'>(initialSubTab);
+  const [subTab, setSubTab] = React.useState<'projek' | 'blok' | 'progres' | 'opname' | 'rincian'>(initialSubTab);
   const [searchQuery, setSearchQuery] = React.useState(initialSearchQuery);
   const [statusFilter, setStatusFilter] = React.useState(initialStatusFilter);
+  const [deleteProjectConfirm, setDeleteProjectConfirm] = React.useState<Project | null>(null);
+
+  // Filtered projects
+  const filteredProjects = React.useMemo(() => {
+    return projects.filter(p => {
+      const q = searchQuery.toLowerCase().trim();
+      if (!q) return true;
+      return (p.name || '').toLowerCase().includes(q) ||
+             (p.location || '').toLowerCase().includes(q) ||
+             (p.id || '').toLowerCase().includes(q);
+    });
+  }, [projects, searchQuery]);
 
   React.useEffect(() => {
     if (initialSubTab) {
@@ -350,13 +374,27 @@ export default function ConstructionView({
         <div className="flex flex-wrap gap-1 p-1 bg-slate-100 rounded-xl">
           <button
             onClick={() => { 
+              setSubTab('projek'); 
+              setSearchQuery(''); 
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all whitespace-nowrap ${
+              subTab === 'projek'
+                ? 'bg-white text-indigo-600 shadow-sm font-bold'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Building2 size={15} />
+            Daftar Projek ({projects.length})
+          </button>
+          <button
+            onClick={() => { 
               setSubTab('blok'); 
               setSearchQuery(''); 
               setStatusFilter('all');
             }}
             className={`flex-1 flex items-center justify-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all whitespace-nowrap ${
               subTab === 'blok'
-                ? 'bg-white text-indigo-600 shadow-sm'
+                ? 'bg-white text-indigo-600 shadow-sm font-bold'
                 : 'text-slate-500 hover:text-slate-700'
             }`}
           >
@@ -415,14 +453,35 @@ export default function ConstructionView({
 
         {/* Dynamic add / action button */}
         <div className="shrink-0 flex items-center">
-          {subTab === 'blok' && (
+          {subTab === 'projek' && onAddProject && (
             <button
-              onClick={onAddKonstruksi}
+              onClick={onAddProject}
               className="w-full xl:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md cursor-pointer"
             >
               <PlusCircle size={16} />
-              Tambah Unit Blok
+              Tambah Projek Baru
             </button>
+          )}
+          {subTab === 'blok' && (
+            <div className="flex items-center gap-2 w-full xl:w-auto">
+              {onAddProject && (
+                <button
+                  onClick={onAddProject}
+                  className="flex-1 xl:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-bold rounded-xl shadow-sm cursor-pointer"
+                  title="Tambah Projek Baru"
+                >
+                  <Building2 size={15} className="text-slate-600" />
+                  <span>+ Projek Baru</span>
+                </button>
+              )}
+              <button
+                onClick={onAddKonstruksi}
+                className="flex-1 xl:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md cursor-pointer"
+              >
+                <PlusCircle size={16} />
+                Tambah Unit Blok
+              </button>
+            </div>
           )}
           {subTab === 'progres' && (
             <button
@@ -461,6 +520,7 @@ export default function ConstructionView({
           <input
             type="text"
             placeholder={
+              subTab === 'projek' ? 'Cari nama projek perumahan, lokasi, atau ID...' :
               subTab === 'blok' ? 'Cari Nomor Blok, tipe rumah, atau projek...' : 
               subTab === 'progres' ? 'Cari id blok, nama pekerja, atau deskripsi item...' :
               subTab === 'opname' ? 'Cari pekerja, kategori pekerjaan, atau nama blok...' :
@@ -468,7 +528,7 @@ export default function ConstructionView({
             }
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full text-sm rounded-xl pl-10 pr-4 py-2 bg-white/70 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full text-sm rounded-xl pl-10 pr-4 py-2 bg-white/70 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 font-semibold text-black"
           />
         </div>
 
@@ -560,6 +620,173 @@ export default function ConstructionView({
           </div>
         )}
       </div>
+
+      {/* Render subtab: PROJEK PERUMAHAN */}
+      {subTab === 'projek' && (
+        <div className="space-y-5">
+          {/* Metric Highlights */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <div className="p-4 rounded-2xl bg-white/70 border border-slate-200/60 shadow-sm flex flex-col justify-between">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Projek</span>
+              <div className="text-2xl font-black text-black mt-1">
+                {projects.length} <span className="text-xs font-semibold text-slate-500">Lokasi</span>
+              </div>
+            </div>
+            <div className="p-4 rounded-2xl bg-white/70 border border-slate-200/60 shadow-sm flex flex-col justify-between">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Unit Terdata</span>
+              <div className="text-2xl font-black text-indigo-600 mt-1">
+                {konstruksiList.length} <span className="text-xs font-semibold text-slate-500">Unit</span>
+              </div>
+            </div>
+            <div className="p-4 rounded-2xl bg-white/70 border border-slate-200/60 shadow-sm flex flex-col justify-between">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Unit Terbangun</span>
+              <div className="text-2xl font-black text-emerald-600 mt-1">
+                {konstruksiList.filter(k => k.statusPembangunan === 'terbangun').length} <span className="text-xs font-semibold text-slate-500">Unit</span>
+              </div>
+            </div>
+            <div className="p-4 rounded-2xl bg-white/70 border border-slate-200/60 shadow-sm flex flex-col justify-between">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Unit On Progres</span>
+              <div className="text-2xl font-black text-amber-600 mt-1">
+                {konstruksiList.filter(k => k.statusPembangunan === 'onProgres').length} <span className="text-xs font-semibold text-slate-500">Unit</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Project Cards Grid */}
+          {filteredProjects.length === 0 ? (
+            <div className="p-10 text-center rounded-2xl border-2 border-dashed border-slate-200 bg-white/50 flex flex-col items-center justify-center gap-3">
+              <div className="p-4 rounded-2xl bg-indigo-50 text-indigo-600">
+                <Building2 size={32} />
+              </div>
+              <div>
+                <h4 className="text-base font-black text-black">
+                  {searchQuery ? 'Tidak Ada Projek yang Sesuai' : 'Belum Ada Data Projek Perumahan'}
+                </h4>
+                <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                  {searchQuery 
+                    ? `Tidak ditemukan projek dengan kata kunci "${searchQuery}". Silakan coba kata kunci lain.`
+                    : 'Daftarkan nama projek perumahan pertama Anda untuk mengelompokkan unit kapling, pengawasan konstruksi, dan template RAB standar.'}
+                </p>
+              </div>
+              {onAddProject && (
+                <button
+                  onClick={onAddProject}
+                  className="mt-2 flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer transition"
+                >
+                  <PlusCircle size={16} />
+                  + Tambah Projek Baru Sekarang
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {filteredProjects.map((p) => {
+                const units = konstruksiList.filter(k => String(k.projectId).trim().toLowerCase() === String(p.id).trim().toLowerCase());
+                const terbangun = units.filter(k => k.statusPembangunan === 'terbangun').length;
+                const onProgres = units.filter(k => k.statusPembangunan === 'onProgres').length;
+                const tersedia = units.filter(k => k.statusPenjualan === 'tersedia').length;
+                const terbooking = units.filter(k => k.statusPenjualan === 'terbooking').length;
+                const terjual = units.filter(k => k.statusPenjualan === 'terjual').length;
+                const linkedRab = rabTemplateList.find(r => r.id === p.rabId);
+
+                return (
+                  <div 
+                    key={p.id}
+                    className="p-5 rounded-2xl bg-white/80 border border-slate-200/80 shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-4"
+                  >
+                    <div>
+                      {/* Header card: ID badge & Title */}
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                          <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
+                            <Building2 size={20} />
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-base font-black text-black truncate">{p.name}</h4>
+                            <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
+                              ID: {p.id}
+                            </span>
+                          </div>
+                        </div>
+                        {onDeleteProject && (
+                          <button
+                            onClick={() => setDeleteProjectConfirm(p)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                            title="Hapus Projek"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Location */}
+                      <div className="flex items-center gap-1.5 text-xs text-slate-600 mb-3.5">
+                        <MapPin size={14} className="text-slate-400 shrink-0" />
+                        <span className="line-clamp-1">{p.location || 'Lokasi belum diatur'}</span>
+                      </div>
+
+                      {/* Linked RAB Selector */}
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60 mb-3.5">
+                        <div className="text-[10px] font-black uppercase text-slate-500 tracking-wider mb-1 flex items-center justify-between">
+                          <span>Template RAB Acuan</span>
+                          {linkedRab && <span className="text-indigo-600 font-bold">Terhubung</span>}
+                        </div>
+                        <select
+                          value={p.rabId || ''}
+                          onChange={(e) => onUpdateProjectRab && onUpdateProjectRab(p.id, e.target.value)}
+                          className="w-full text-xs font-bold text-slate-800 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-400 cursor-pointer"
+                        >
+                          <option value="">-- Belum Terhubung RAB --</option>
+                          {rabTemplateList.map(r => (
+                            <option key={r.id} value={r.id}>{r.namaRab}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Units stats breakdown */}
+                      <div className="space-y-1.5 pt-1 border-t border-slate-100">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-slate-500 font-semibold">Total Unit Kapling:</span>
+                          <span className="font-black text-black">{units.length} Unit</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                          <div className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-100/60">
+                            Terbangun: <strong>{terbangun}</strong>
+                          </div>
+                          <div className="px-2 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-100/60">
+                            On Progres: <strong>{onProgres}</strong>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-slate-500 pt-1">
+                          <span>Tersedia: <strong>{tersedia}</strong></span>
+                          <span>•</span>
+                          <span>Terbooking: <strong>{terbooking}</strong></span>
+                          <span>•</span>
+                          <span>Terjual: <strong>{terjual}</strong></span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card Footer actions */}
+                    <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setSubTab('blok');
+                          if (onSelectProject) onSelectProject(p.id);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl transition cursor-pointer"
+                      >
+                        <Sliders size={13} />
+                        <span>Lihat Unit Blok</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Render tables or grids */}
       {subTab === 'blok' && (
@@ -1098,6 +1325,73 @@ export default function ConstructionView({
                 Ya, Bangunan Selesai
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Modal Konfirmasi Hapus Projek */}
+      {deleteProjectConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#e0e5ec] shadow-[12px_12px_24px_rgba(163,177,198,0.7),-12px_-12px_24px_rgba(255,255,255,0.9)] p-6 sm:p-7 rounded-3xl max-w-md w-full border border-white/60 space-y-5">
+            {(() => {
+              const linkedUnits = konstruksiList.filter(
+                (k) => String(k.projectId).trim().toLowerCase() === String(deleteProjectConfirm.id).trim().toLowerCase()
+              );
+              const hasUnits = linkedUnits.length > 0;
+
+              return (
+                <>
+                  <div className="flex items-center gap-3 text-rose-600">
+                    <div className="p-3 rounded-2xl bg-[#e0e5ec] shadow-[inset_3px_3px_6px_rgba(163,177,198,0.5),inset_-3px_-3px_6px_rgba(255,255,255,0.85)]">
+                      <Trash2 size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-display font-black text-lg text-[#2d3748]">
+                        {hasUnits ? 'Tidak Dapat Menghapus Projek' : 'Konfirmasi Hapus Projek'}
+                      </h3>
+                      <p className="text-xs text-slate-500">{deleteProjectConfirm.name}</p>
+                    </div>
+                  </div>
+
+                  {hasUnits ? (
+                    <div className="text-sm text-slate-600 leading-relaxed space-y-2">
+                      <p>
+                        Projek <strong>{deleteProjectConfirm.name}</strong> masih memiliki{' '}
+                        <strong className="text-rose-600">{linkedUnits.length} unit blok</strong> di data konstruksi.
+                      </p>
+                      <p className="text-xs text-slate-500 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
+                        Demi menjaga integritas database Google Sheets, projek tidak boleh dihapus selama masih ada unit blok yang terdaftar di dalamnya.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-600 leading-relaxed">
+                      Apakah Anda yakin ingin menghapus data projek <strong>{deleteProjectConfirm.name}</strong> (ID: {deleteProjectConfirm.id}) dari database Google Sheets?
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteProjectConfirm(null)}
+                      className="px-5 py-2.5 rounded-2xl bg-[#e0e5ec] text-slate-600 text-xs font-bold shadow-[4px_4px_8px_rgba(163,177,198,0.5),-4px_-4px_8px_rgba(255,255,255,0.85)] hover:shadow-[inset_2px_2px_4px_rgba(163,177,198,0.5)] transition-all cursor-pointer"
+                    >
+                      {hasUnits ? 'Mengerti' : 'Batal'}
+                    </button>
+                    {!hasUnits && onDeleteProject && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onDeleteProject(deleteProjectConfirm.id);
+                          setDeleteProjectConfirm(null);
+                        }}
+                        className="px-5 py-2.5 rounded-2xl bg-rose-600 text-white text-xs font-bold shadow-md hover:bg-rose-700 active:scale-95 transition-all cursor-pointer"
+                      >
+                        Ya, Hapus Projek
+                      </button>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
