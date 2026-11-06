@@ -12,6 +12,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { LeadPenjualan } from '../types';
+import { getWitaToday } from '../utils/timezone';
 
 interface LeadsViewProps {
   leadList: LeadPenjualan[];
@@ -59,7 +60,7 @@ export default function LeadsView({
   // Set default month to current month or latest month
   React.useEffect(() => {
     if (availableMonths.length > 0 && !hasSetDefault) {
-      const currentMonth = new Date().toISOString().slice(0, 7); // e.g. "2026-05"
+      const currentMonth = getWitaToday().slice(0, 7); // e.g. "2026-05" in WITA
       if (availableMonths.includes(currentMonth)) {
         setSelectedMonth(currentMonth);
       } else {

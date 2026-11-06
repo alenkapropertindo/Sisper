@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Save, AlertCircle, AlertTriangle } from 'lucide-react';
 import { Project, Gudang, Karyawan, Konstruksi, Inventory, ProgresPekerjaan, Pekerja, Supplier, RabTemplate, RabDetail, TransaksiMaterial } from '../types';
+import { getWitaToday, normalizeDateString } from '../utils/timezone';
 
 interface AddRecordModalProps {
   isOpen: boolean;
@@ -71,10 +72,10 @@ export default function AddRecordModal({
       .filter(t => t.type === 'keluar' && t.blokRumah === formData.blokRumah && t.namaMaterial.toLowerCase().trim() === formData.namaMaterial.toLowerCase().trim())
       .reduce((sum, t) => sum + (Number(t.jumlah) || 0), 0);
 
-    const inputQty = Number(formData.jumlah) || 0;
-    const projectedTotal = pastUsage + inputQty;
+    const inputQty = parseFloat(String(formData.jumlah || '').replace(',', '.')) || 0;
+    const projectedTotal = Math.round((pastUsage + inputQty) * 1000) / 1000;
     const isExceeded = projectedTotal > rabItem.qtyStandar;
-    const overQty = Math.max(0, projectedTotal - rabItem.qtyStandar);
+    const overQty = Math.max(0, Math.round((projectedTotal - rabItem.qtyStandar) * 1000) / 1000);
 
     return {
       rabName: rabTemplate.namaRab,
@@ -89,44 +90,39 @@ export default function AddRecordModal({
     };
   }, [type, formData.type, formData.blokRumah, formData.namaMaterial, formData.jumlah, konstruksiList, projects, rabTemplateList, rabDetailList, transaksiList]);
 
-  // Extract unique workers from pekerjaList, with fallback to progresList
+  // Extract unique workers combining registered workers (pekerjaList) and progress records (progresList)
   const uniqueWorkers = React.useMemo(() => {
-    const map = new Map<string, { namaTukang: string; noHp: string }>();
-    if (pekerjaList && pekerjaList.length > 0) {
-      pekerjaList.forEach((p) => {
-        const name = p.namaTukang?.trim();
-        if (!name || name === 'Belum Ditunjuk') return;
-        const key = name.toLowerCase();
-        if (!map.has(key)) {
-          map.set(key, { namaTukang: name, noHp: p.noHp || '' });
-        } else {
-          const existing = map.get(key)!;
-          if (p.noHp && p.noHp !== '-' && (!existing.noHp || existing.noHp === '-')) {
-            existing.noHp = p.noHp;
-          }
+    const map = new Map<string, { namaTukang: string; noHp: string; kategori?: string }>();
+
+    // 1. First add from master pekerjaList (database)
+    (pekerjaList || []).forEach((p) => {
+      const name = p.namaTukang?.trim();
+      if (!name || name === 'Belum Ditunjuk') return;
+      const key = name.toLowerCase();
+      map.set(key, { namaTukang: name, noHp: p.noHp || '', kategori: p.kategoriPekerjaan });
+    });
+
+    // 2. Also add from progresList if not already present
+    (progresList || []).forEach((p) => {
+      const name = p.namaTukang?.trim();
+      if (!name || name === 'Belum Ditunjuk') return;
+      const key = name.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, { namaTukang: name, noHp: p.noHp || '', kategori: p.kategoriPekerjaan });
+      } else {
+        const existing = map.get(key)!;
+        if (p.noHp && p.noHp !== '-' && (!existing.noHp || existing.noHp === '-')) {
+          existing.noHp = p.noHp;
         }
-      });
-    } else {
-      progresList.forEach((p) => {
-        const name = p.namaTukang?.trim();
-        if (!name || name === 'Belum Ditunjuk') return;
-        const key = name.toLowerCase();
-        if (!map.has(key)) {
-          map.set(key, { namaTukang: name, noHp: p.noHp || '' });
-        } else {
-          const existing = map.get(key)!;
-          if (p.noHp && p.noHp !== '-' && (!existing.noHp || existing.noHp === '-')) {
-            existing.noHp = p.noHp;
-          }
-        }
-      });
-    }
+      }
+    });
+
     return Array.from(map.values()).sort((a, b) => a.namaTukang.localeCompare(b.namaTukang));
   }, [pekerjaList, progresList]);
 
   // Initializing default form fields based on type
   React.useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getWitaToday();
     
     if (type === 'project') {
       setFormData({
@@ -152,6 +148,7 @@ export default function AddRecordModal({
         workerPlafon: '',
         workerListrik: '',
         workerPembersihan: '',
+        workerDrainase: '',
       });
     } else if (type === 'progres') {
       setFormData({
@@ -236,10 +233,10 @@ export default function AddRecordModal({
         statusKehadiran: 'Hadir',
       });
     } else if (type === 'absensi_pekerja') {
-      const uniqueWorkers = Array.from(new Set(progresList.map(p => p.namaTukang.trim()))).filter(Boolean);
+      const defaultWorkerName = uniqueWorkers[0]?.namaTukang || (pekerjaList[0]?.namaTukang) || '';
       setFormData({
         tanggal: today,
-        namaTukang: uniqueWorkers[0] || '',
+        namaTukang: defaultWorkerName,
         statusKehadiran: 'Hadir',
         keterangan: '',
       });
@@ -251,7 +248,7 @@ export default function AddRecordModal({
         namaMarketing: 'Sarah Amalia',
         leadStatus: 'booking',
         noWhatsapp: '',
-        tanggalInput: new Date().toISOString().split('T')[0],
+        tanggalInput: today,
       });
     } else if (type === 'rab_template') {
       setFormData({
@@ -271,8 +268,9 @@ export default function AddRecordModal({
 
   const handleChange = (key: string, value: any) => {
     let finalValue = value;
-    // Safely parse number variables
-    if (['luasTanah', 'luasBangunan', 'jumlahStok', 'minimumStock', 'harga', 'jumlah', 'persentasiProgres', 'nilaiPekerjaan', 'nilaiPembayaran', 'komisi'].includes(key)) {
+    if (key === 'jumlah') {
+      finalValue = value;
+    } else if (['luasTanah', 'luasBangunan', 'jumlahStok', 'minimumStock', 'harga', 'persentasiProgres', 'nilaiPekerjaan', 'nilaiPembayaran', 'komisi'].includes(key)) {
       finalValue = value === '' ? '' : (Number(value) || 0);
     }
 
@@ -349,6 +347,14 @@ export default function AddRecordModal({
     if (type === 'rab_template' && !formData.namaRab) {
       setErrorMsg('Mohon isi nama template RAB.');
       return;
+    }
+    if (type === 'transaksi') {
+      const parsedJumlah = parseFloat(String(formData.jumlah || '').replace(',', '.'));
+      if (isNaN(parsedJumlah) || parsedJumlah <= 0) {
+        setErrorMsg('Mohon isi kuantitas / jumlah mutasi yang valid (lebih dari 0, contoh: 0.5 atau 1).');
+        return;
+      }
+      formData.jumlah = parsedJumlah;
     }
     if (type === 'rab_detail' && (!formData.namaMaterial || !formData.qtyStandar)) {
       setErrorMsg('Mohon isi nama material dan kuantitas standar RAB.');
@@ -691,6 +697,20 @@ export default function AddRecordModal({
                         ))}
                       </select>
                     </div>
+
+                    <div className="col-span-2">
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Pekerja Drainase</label>
+                      <select
+                        value={formData.workerDrainase || ''}
+                        onChange={(e) => handleChange('workerDrainase', e.target.value)}
+                        className="w-full text-xs rounded-xl px-2.5 py-2 bg-white border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                      >
+                        <option value="">-- Belum Ditunjuk --</option>
+                        {uniqueWorkers.map((w) => (
+                          <option key={w.namaTukang} value={w.namaTukang}>{w.namaTukang}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
               )}
@@ -725,6 +745,7 @@ export default function AddRecordModal({
                     <option value="atap">Atap</option>
                     <option value="listrik">Listrik</option>
                     <option value="pembersihan">Pembersihan</option>
+                    <option value="drainase">Drainase</option>
                   </select>
                 </div>
               </div>
@@ -1006,29 +1027,80 @@ export default function AddRecordModal({
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-600 block mb-1">Mutasi Type</label>
-                  <select
-                    value={formData.type || 'keluar'}
-                    onChange={(e) => handleChange('type', e.target.value)}
-                    className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200"
-                  >
-                    <option value="keluar">Keluar (Gudang ke Unit)</option>
-                    <option value="masuk">Masuk (Drop ke Gudang)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-600 block mb-1">Kuantitas / Jumlah</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={formData.jumlah || 1}
-                    onChange={(e) => handleChange('jumlah', e.target.value)}
-                    className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200"
-                  />
-                </div>
-              </div>
+              {(() => {
+                const selectedInv = inventoryList.find(i => i.namaMaterial === formData.namaMaterial);
+                const unitName = selectedInv?.satuan || '';
+                return (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">Mutasi Type</label>
+                      <select
+                        value={formData.type || 'keluar'}
+                        onChange={(e) => handleChange('type', e.target.value)}
+                        className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200"
+                      >
+                        <option value="keluar">Keluar (Gudang ke Unit)</option>
+                        <option value="masuk">Masuk (Drop ke Gudang)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-600 block mb-1">
+                        Kuantitas / Jumlah {unitName ? `(${unitName})` : ''}*
+                      </label>
+                      <div className="relative flex items-center">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          required
+                          placeholder="Contoh: 0.5 atau 1"
+                          value={formData.jumlah !== undefined && formData.jumlah !== null ? formData.jumlah : ''}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9.,]/g, '');
+                            handleChange('jumlah', val);
+                          }}
+                          className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-400 pr-16"
+                        />
+                        <div className="absolute right-2 flex items-center gap-1">
+                          {unitName && (
+                            <span className="text-[11px] font-bold text-slate-400 uppercase mr-1">
+                              {unitName}
+                            </span>
+                          )}
+                          <div className="flex flex-col border border-slate-200 rounded overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const curr = parseFloat(String(formData.jumlah || '0').replace(',', '.')) || 0;
+                                const nextVal = Math.round((curr + 0.5) * 10) / 10;
+                                handleChange('jumlah', String(nextVal));
+                              }}
+                              className="px-1.5 py-0.5 bg-slate-50 hover:bg-slate-100 text-slate-600 text-[9px] font-bold leading-none border-b border-slate-200 cursor-pointer"
+                              title="Tambah 0.5"
+                            >
+                              ▲
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const curr = parseFloat(String(formData.jumlah || '0').replace(',', '.')) || 0;
+                                const nextVal = Math.max(0.1, Math.round((curr - 0.5) * 10) / 10);
+                                handleChange('jumlah', String(nextVal));
+                              }}
+                              className="px-1.5 py-0.5 bg-slate-50 hover:bg-slate-100 text-slate-600 text-[9px] font-bold leading-none cursor-pointer"
+                              title="Kurang 0.5"
+                            >
+                              ▼
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-400 mt-1 block">
+                        Bisa memasukkan angka desimal (contoh: 0,5 atau 0.5)
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div>
                 <label className="text-xs font-bold text-slate-600 block mb-1">Tanggal Mutasi</label>
@@ -1135,6 +1207,7 @@ export default function AddRecordModal({
                     <option value="atap">Atap</option>
                     <option value="listrik">Listrik</option>
                     <option value="pembersihan">Pembersihan</option>
+                    <option value="drainase">Drainase</option>
                   </select>
                 </div>
               </div>
@@ -1370,9 +1443,9 @@ export default function AddRecordModal({
                     className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200"
                   >
                     <option value="Hadir">Hadir</option>
-                    <option value="Sakit">Sakit (S/D Surat Dokter)</option>
-                    <option value="Izin">Izin Terrencana</option>
-                    <option value="Alpa">Alpa / Bolos</option>
+                    <option value="Sakit">Sakit</option>
+                    <option value="Izin">Izin</option>
+                    <option value="Alpa">Alpa</option>
                   </select>
                 </div>
               </div>
@@ -1393,15 +1466,17 @@ export default function AddRecordModal({
           {type === 'absensi_pekerja' && (
             <>
               <div>
-                <label className="text-xs font-bold text-slate-600 block mb-1">Pilih Pekerja Sesuai Progres</label>
+                <label className="text-xs font-bold text-slate-600 block mb-1">Pilih Pekerja Terdaftar</label>
                 <select
                   value={formData.namaTukang || ''}
                   onChange={(e) => handleChange('namaTukang', e.target.value)}
-                  className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 mb-2"
+                  className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 mb-2 font-semibold text-black"
                 >
                   <option value="">-- Pilih Pekerja Terdaftar --</option>
-                  {Array.from(new Set(progresList.map(p => p.namaTukang.trim()))).filter(Boolean).map((name) => (
-                    <option key={name} value={name}>{name}</option>
+                  {uniqueWorkers.map((w) => (
+                    <option key={w.namaTukang} value={w.namaTukang}>
+                      {w.namaTukang} {w.kategori ? `(${w.kategori.toUpperCase()})` : ''} {w.noHp && w.noHp !== '-' ? `• ${w.noHp}` : ''}
+                    </option>
                   ))}
                 </select>
                 <label className="text-xs font-bold text-slate-600 block mb-1">Nama Pekerja / Tukang (Konfirmasi / Ketik Baru)*</label>
@@ -1411,7 +1486,7 @@ export default function AddRecordModal({
                   placeholder="Contoh: Pak Joko Budiman"
                   value={formData.namaTukang || ''}
                   onChange={(e) => handleChange('namaTukang', e.target.value)}
-                  className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200"
+                  className="w-full text-sm rounded-xl px-3 py-2 bg-white border border-slate-200 font-semibold text-black"
                 />
               </div>
 
@@ -1426,7 +1501,7 @@ export default function AddRecordModal({
                     <option value="Hadir">Hadir</option>
                     <option value="Sakit">Sakit</option>
                     <option value="Izin">Izin</option>
-                    <option value="Alpa">Alpa / Bolos</option>
+                    <option value="Alpa">Alpa</option>
                   </select>
                 </div>
                 <div>

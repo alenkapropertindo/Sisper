@@ -58,6 +58,13 @@ const NUMERIC_FIELDS = [
 function setupDatabase() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
+  // Pastikan zona waktu spreadsheet diatur ke Sulawesi Tenggara (WITA / Asia/Makassar / UTC+8)
+  try {
+    ss.setSpreadsheetTimeZone('Asia/Makassar');
+  } catch (e) {
+    // Abaikan jika tidak diizinkan oleh permission akun
+  }
+
   Object.keys(SCHEMA).forEach(tableName => {
     let sheet = ss.getSheetByName(tableName);
     const headers = SCHEMA[tableName];
@@ -174,7 +181,8 @@ function readSheetData(ss, tableName) {
     headers.forEach((h, colIdx) => {
       let val = row[colIdx];
       if (val instanceof Date) {
-        val = Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+        // Zona waktu resmi Sulawesi Tenggara (WITA - UTC+8 / Asia/Makassar)
+        val = Utilities.formatDate(val, 'Asia/Makassar', 'yyyy-MM-dd');
       } else if (NUMERIC_FIELDS.indexOf(h) !== -1) {
         val = Number(val) || 0;
       }

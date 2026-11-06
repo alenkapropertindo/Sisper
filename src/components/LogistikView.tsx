@@ -18,9 +18,13 @@ import {
   AlertTriangle,
   Layers,
   Trash2,
-  Sliders
+  Sliders,
+  Calendar,
+  Filter,
+  X
 } from 'lucide-react';
 import { Inventory, Gudang, Supplier, TransaksiMaterial, Project, Konstruksi, RabTemplate, RabDetail } from '../types';
+import { getWitaToday, getWitaYesterday, getWitaDateString, normalizeDateString } from '../utils/timezone';
 
 interface LogistikViewProps {
   inventoryList: Inventory[];
@@ -116,6 +120,9 @@ export default function LogistikView({
   const [searchQuery, setSearchQuery] = React.useState('');
   const [metricsTimeframe, setMetricsTimeframe] = React.useState<'hari' | 'minggu' | 'bulan'>('hari');
   const [stockStatusFilter, setStockStatusFilter] = React.useState<string>('all');
+  const [transaksiTypeFilter, setTransaksiTypeFilter] = React.useState<'all' | 'masuk' | 'keluar'>('all');
+  const [transaksiTimePreset, setTransaksiTimePreset] = React.useState<'all' | 'today' | 'yesterday' | 'last7' | 'thisMonth' | 'custom'>('all');
+  const [transaksiDateFilter, setTransaksiDateFilter] = React.useState<string>('');
   const [selectedRabId, setSelectedRabId] = React.useState<string>(() => rabTemplateList[0]?.id || '');
   const [selectedBlokUnit, setSelectedBlokUnit] = React.useState<string>(() => initialSelectedUnit || konstruksiList[0]?.id || '');
   const [rekapViewMode, setRekapViewMode] = React.useState<'detail' | 'semua_unit'>(() => initialRekapViewMode || 'detail');
@@ -150,60 +157,60 @@ export default function LogistikView({
     }
   }, [konstruksiList, selectedBlokUnit]);
 
-  // Compute metrics (quantity and value) dynamically based on active timeframe selection
+  // Filter Dinamis Transaksi Material berdasarkan Teks, Tipe Transaksi, dan Waktu/Tanggal
+  const filteredTransaksi = React.useMemo(() => {
+    const todayStr = getWitaToday();
+    const yesterdayStr = getWitaYesterday();
+
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgoStr = getWitaDateString(sevenDaysAgo);
+    const currentMonthPrefix = todayStr.slice(0, 7);
+
+    return transaksiList.filter(t => {
+      // 1. Pencarian teks
+      const q = searchQuery.toLowerCase().trim();
+      const matchSearch =
+        !q ||
+        (t.namaMaterial || '').toLowerCase().includes(q) ||
+        (t.namaGudang || '').toLowerCase().includes(q) ||
+        (t.blokRumah || '').toLowerCase().includes(q) ||
+        (t.supplier || '').toLowerCase().includes(q) ||
+        (t.catatan || '').toLowerCase().includes(q);
+
+      // 2. Filter Tipe Transaksi ('all' | 'masuk' | 'keluar')
+      const matchType = transaksiTypeFilter === 'all' || t.type === transaksiTypeFilter;
+
+      // 3. Filter Waktu / Tanggal Transaksi
+      const normDate = normalizeDateString(t.tanggal);
+      let matchDate = true;
+
+      if (transaksiDateFilter) {
+        matchDate = normDate === transaksiDateFilter;
+      } else if (transaksiTimePreset === 'today') {
+        matchDate = normDate === todayStr;
+      } else if (transaksiTimePreset === 'yesterday') {
+        matchDate = normDate === yesterdayStr;
+      } else if (transaksiTimePreset === 'last7') {
+        matchDate = normDate >= sevenDaysAgoStr && normDate <= todayStr;
+      } else if (transaksiTimePreset === 'thisMonth') {
+        matchDate = normDate.startsWith(currentMonthPrefix);
+      }
+
+      return matchSearch && matchType && matchDate;
+    });
+  }, [transaksiList, searchQuery, transaksiTypeFilter, transaksiTimePreset, transaksiDateFilter]);
+
+  // Compute metrics (quantity and value) dynamically based on filtered transactions
   const metricsData = React.useMemo(() => {
-    const today = new Date();
-    // format to YYYY-MM-DD in local time
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    const todayStr = `${yyyy}-${mm}-${dd}`;
-
-    // Helper using mid-day to completely bypass timezone limits
-    const parseLocalDate = (dateStr: string) => {
-      if (!dateStr) return null;
-      const parts = dateStr.split('-');
-      if (parts.length !== 3) return null;
-      const yr = parseInt(parts[0], 10);
-      const mth = parseInt(parts[1], 10) - 1;
-      const dy = parseInt(parts[2], 10);
-      return new Date(yr, mth, dy, 12, 0, 0);
-    };
-
-    // Calculate dates bound values
-    // Weekly: within current week starting from Sunday 00:00:00 to Saturday 23:59:59
-    const startOfWeek = new Date(today);
-    const currentDay = today.getDay();
-    startOfWeek.setDate(today.getDate() - currentDay);
-    startOfWeek.setHours(0, 0, 0, 0);
-
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6);
-    endOfWeek.setHours(23, 59, 59, 999);
-
-    let filtered = transaksiList;
-    if (metricsTimeframe === 'hari') {
-      filtered = transaksiList.filter(t => t.tanggal === todayStr);
-    } else if (metricsTimeframe === 'minggu') {
-      filtered = transaksiList.filter(t => {
-        const d = parseLocalDate(t.tanggal);
-        return d !== null && d >= startOfWeek && d <= endOfWeek;
-      });
-    } else if (metricsTimeframe === 'bulan') {
-      filtered = transaksiList.filter(t => {
-        const d = parseLocalDate(t.tanggal);
-        return d !== null && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
-      });
-    }
-
     let masukQty = 0;
     let keluarQty = 0;
     let keluarCost = 0;
 
-    filtered.forEach(t => {
+    filteredTransaksi.forEach(t => {
       const matchedInventory = inventoryList.find(inv => inv.namaMaterial === t.namaMaterial);
       const hargaSatuan = matchedInventory ? matchedInventory.harga : 0;
-      const amount = t.jumlah || 0;
+      const amount = Number(t.jumlah) || 0;
 
       if (t.type === 'masuk') {
         masukQty += amount;
@@ -214,11 +221,11 @@ export default function LogistikView({
     });
 
     return {
-      masukQty,
-      keluarQty,
-      keluarCost
+      masukQty: Math.round(masukQty * 100) / 100,
+      keluarQty: Math.round(keluarQty * 100) / 100,
+      keluarCost: Math.round(keluarCost)
     };
-  }, [transaksiList, inventoryList, metricsTimeframe]);
+  }, [filteredTransaksi, inventoryList]);
 
   // Currency utility helper
   const formatRupiah = (val: number) => {
@@ -305,14 +312,6 @@ export default function LogistikView({
       s.alamat.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [supplierList, searchQuery]);
-
-  const filteredTransaksi = React.useMemo(() => {
-    return transaksiList.filter(t => 
-      t.namaMaterial.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.namaGudang.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.blokRumah.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [transaksiList, searchQuery]);
 
   return (
     <div className="space-y-6">
@@ -432,6 +431,77 @@ export default function LogistikView({
               <option value="aman">Status: AMAN</option>
               <option value="re-order">Status: RE-ORDER (Minim)</option>
             </select>
+          </div>
+        )}
+
+        {subTab === 'transaksi' && (
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Filter Tipe Transaksi */}
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/45 backdrop-blur-md border border-white/20">
+              <Sliders size={15} className="text-slate-400 ml-2 shrink-0" />
+              <select
+                value={transaksiTypeFilter}
+                onChange={(e) => setTransaksiTypeFilter(e.target.value as any)}
+                className="text-xs sm:text-sm rounded-lg px-2.5 py-1.5 bg-white/70 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-slate-700 font-semibold cursor-pointer"
+              >
+                <option value="all">Semua Tipe Transaksi</option>
+                <option value="masuk">Tipe: Masuk (Drop Gudang)</option>
+                <option value="keluar">Tipe: Keluar (Gudang ke Unit)</option>
+              </select>
+            </div>
+
+            {/* Filter Waktu Transaksi */}
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/45 backdrop-blur-md border border-white/20">
+              <Calendar size={15} className="text-slate-400 ml-2 shrink-0" />
+              <select
+                value={transaksiTimePreset}
+                onChange={(e) => {
+                  const val = e.target.value as any;
+                  setTransaksiTimePreset(val);
+                  if (val !== 'custom') {
+                    setTransaksiDateFilter('');
+                  }
+                }}
+                className="text-xs sm:text-sm rounded-lg px-2.5 py-1.5 bg-white/70 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-slate-700 font-semibold cursor-pointer"
+              >
+                <option value="all">Semua Waktu</option>
+                <option value="today">Hari Ini</option>
+                <option value="yesterday">Kemarin</option>
+                <option value="last7">7 Hari Terakhir</option>
+                <option value="thisMonth">Bulan Ini</option>
+                <option value="custom">Pilih Tanggal...</option>
+              </select>
+
+              {/* Tanggal Spesifik (Input Date) */}
+              {(transaksiTimePreset === 'custom' || transaksiDateFilter) && (
+                <input
+                  type="date"
+                  value={transaksiDateFilter}
+                  onChange={(e) => {
+                    setTransaksiDateFilter(e.target.value);
+                    setTransaksiTimePreset('custom');
+                  }}
+                  className="text-xs sm:text-sm rounded-lg px-2.5 py-1.5 bg-white/90 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-slate-700 font-semibold cursor-pointer"
+                />
+              )}
+            </div>
+
+            {/* Tombol Reset jika ada filter aktif */}
+            {(transaksiTypeFilter !== 'all' || transaksiTimePreset !== 'all' || transaksiDateFilter || searchQuery) && (
+              <button
+                onClick={() => {
+                  setTransaksiTypeFilter('all');
+                  setTransaksiTimePreset('all');
+                  setTransaksiDateFilter('');
+                  setSearchQuery('');
+                }}
+                className="flex items-center gap-1 text-xs font-bold text-rose-600 hover:text-rose-700 px-3 py-2 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 transition cursor-pointer"
+                title="Reset semua filter mutasi"
+              >
+                <X size={14} />
+                <span>Reset</span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -595,9 +665,9 @@ export default function LogistikView({
             {/* Filter buttons */}
             <div className="flex p-1 bg-slate-100 rounded-xl border border-slate-200/40">
               <button
-                onClick={() => setMetricsTimeframe('hari')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  metricsTimeframe === 'hari'
+                onClick={() => { setTransaksiTimePreset('today'); setTransaksiDateFilter(''); }}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  transaksiTimePreset === 'today' && !transaksiDateFilter
                     ? 'bg-white text-indigo-700 shadow-sm'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
@@ -605,24 +675,34 @@ export default function LogistikView({
                 Hari Ini
               </button>
               <button
-                onClick={() => setMetricsTimeframe('minggu')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  metricsTimeframe === 'minggu'
+                onClick={() => { setTransaksiTimePreset('last7'); setTransaksiDateFilter(''); }}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  transaksiTimePreset === 'last7' && !transaksiDateFilter
                     ? 'bg-white text-indigo-700 shadow-sm'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
-                Mingguan
+                7 Hari
               </button>
               <button
-                onClick={() => setMetricsTimeframe('bulan')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  metricsTimeframe === 'bulan'
+                onClick={() => { setTransaksiTimePreset('thisMonth'); setTransaksiDateFilter(''); }}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  transaksiTimePreset === 'thisMonth' && !transaksiDateFilter
                     ? 'bg-white text-indigo-700 shadow-sm'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
-                Bulanan
+                Bulan Ini
+              </button>
+              <button
+                onClick={() => { setTransaksiTimePreset('all'); setTransaksiDateFilter(''); }}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  transaksiTimePreset === 'all' && !transaksiDateFilter
+                    ? 'bg-white text-indigo-700 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Semua
               </button>
             </div>
           </div>
@@ -637,7 +717,17 @@ export default function LogistikView({
                   {metricsData.masukQty} <span className="text-xs font-normal text-slate-450">satuan</span>
                 </span>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  {metricsTimeframe === 'hari' ? 'Total masuk hari ini' : metricsTimeframe === 'minggu' ? 'Total masuk minggu ini' : 'Total masuk bulan ini'}
+                  {transaksiDateFilter 
+                    ? `Per tanggal ${transaksiDateFilter}`
+                    : transaksiTimePreset === 'today' 
+                    ? 'Total masuk hari ini' 
+                    : transaksiTimePreset === 'yesterday'
+                    ? 'Total masuk kemarin'
+                    : transaksiTimePreset === 'last7' 
+                    ? 'Total masuk 7 hari terakhir' 
+                    : transaksiTimePreset === 'thisMonth'
+                    ? 'Total masuk bulan ini'
+                    : 'Total seluruh data masuk'}
                 </span>
               </div>
               <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl shadow-xs">
@@ -653,7 +743,17 @@ export default function LogistikView({
                   {metricsData.keluarQty} <span className="text-xs font-normal text-slate-455">satuan</span>
                 </span>
                 <span className="text-[10px] text-slate-400 mt-1 block">
-                  {metricsTimeframe === 'hari' ? 'Total keluar hari ini' : metricsTimeframe === 'minggu' ? 'Total keluar minggu ini' : 'Total keluar bulan ini'}
+                  {transaksiDateFilter 
+                    ? `Per tanggal ${transaksiDateFilter}`
+                    : transaksiTimePreset === 'today' 
+                    ? 'Total keluar hari ini' 
+                    : transaksiTimePreset === 'yesterday'
+                    ? 'Total keluar kemarin'
+                    : transaksiTimePreset === 'last7' 
+                    ? 'Total keluar 7 hari terakhir' 
+                    : transaksiTimePreset === 'thisMonth'
+                    ? 'Total keluar bulan ini'
+                    : 'Total seluruh data keluar'}
                 </span>
               </div>
               <div className="p-3 bg-rose-100 text-rose-600 rounded-xl shadow-xs">
@@ -669,12 +769,48 @@ export default function LogistikView({
                   {formatRupiah(metricsData.keluarCost)}
                 </span>
                 <span className="text-[10px] text-slate-400 mt-1.5 block">
-                  Estimasi nilai material keluar
+                  {transaksiTypeFilter === 'masuk' ? 'Hanya material masuk terfilter' : 'Estimasi nilai material keluar terfilter'}
                 </span>
               </div>
               <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl shadow-xs">
                 <Coins size={18} />
               </div>
+            </div>
+          </div>
+
+          {/* Active Filter Bar & Row Count */}
+          <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 px-1 gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-slate-800 bg-white/80 border border-slate-200/80 px-2.5 py-1 rounded-lg shadow-2xs">
+                {filteredTransaksi.length} Data Transaksi
+              </span>
+              {transaksiTypeFilter !== 'all' && (
+                <span className={`px-2 py-0.5 rounded-md font-bold text-[11px] uppercase border ${
+                  transaksiTypeFilter === 'masuk'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-rose-50 text-rose-700 border-rose-200'
+                }`}>
+                  Tipe: {transaksiTypeFilter}
+                </span>
+              )}
+              {(transaksiTimePreset !== 'all' || transaksiDateFilter) && (
+                <span className="bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-md font-bold text-[11px]">
+                  Waktu: {
+                    transaksiDateFilter 
+                      ? transaksiDateFilter 
+                      : transaksiTimePreset === 'today' 
+                      ? 'Hari Ini' 
+                      : transaksiTimePreset === 'yesterday'
+                      ? 'Kemarin'
+                      : transaksiTimePreset === 'last7'
+                      ? '7 Hari Terakhir'
+                      : 'Bulan Ini'
+                  }
+                </span>
+              )}
+            </div>
+            <div className="text-[11px] text-slate-400 font-medium">
+              Zona Waktu: Sulawesi Tenggara (WITA)
             </div>
           </div>
 
@@ -734,6 +870,29 @@ export default function LogistikView({
                     </tr>
                   );
                 })}
+                {filteredTransaksi.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-slate-400">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <AlertOctagon size={24} className="text-slate-300" />
+                        <span className="font-medium text-slate-600">Tidak ada riwayat mutasi material yang cocok dengan filter yang dipilih.</span>
+                        {(transaksiTypeFilter !== 'all' || transaksiTimePreset !== 'all' || transaksiDateFilter || searchQuery) && (
+                          <button
+                            onClick={() => {
+                              setTransaksiTypeFilter('all');
+                              setTransaksiTimePreset('all');
+                              setTransaksiDateFilter('');
+                              setSearchQuery('');
+                            }}
+                            className="mt-1 text-xs text-indigo-600 font-bold hover:underline cursor-pointer"
+                          >
+                            Reset semua filter
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

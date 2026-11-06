@@ -28,6 +28,7 @@ import {
   RabTemplate,
   RabDetail
 } from '../types';
+import { getWitaToday, normalizeDateString } from '../utils/timezone';
 
 interface DashboardViewProps {
   projects: Project[];
@@ -216,16 +217,16 @@ export default function DashboardView({
 
   // Calculate percentages based on today's attendance or latest available date
   
-  // A. Employee Attendance Date, Count & Percentage
+  // A. Employee Attendance Date, Count & Percentage (WITA - Sulawesi Tenggara)
   const karyawanDateInfo = React.useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const hasToday = absensiList.some(a => a.tanggal === todayStr);
+    const todayStr = getWitaToday();
+    const hasToday = absensiList.some(a => normalizeDateString(a.tanggal) === todayStr);
     if (hasToday) {
       return { date: todayStr, label: 'Hari Ini' };
     }
     // Fallback to latest date in table
     if (absensiList.length > 0) {
-      const dates = absensiList.map(a => a.tanggal).sort();
+      const dates = absensiList.map(a => normalizeDateString(a.tanggal)).filter(Boolean).sort();
       const latest = dates[dates.length - 1];
       return { date: latest, label: `${latest}` };
     }
@@ -233,7 +234,7 @@ export default function DashboardView({
   }, [absensiList]);
 
   const employeeAttendancePct = React.useMemo(() => {
-    const targetAbs = absensiList.filter(a => a.tanggal === karyawanDateInfo.date);
+    const targetAbs = absensiList.filter(a => normalizeDateString(a.tanggal) === karyawanDateInfo.date);
     if (targetAbs.length === 0) return 0;
     const total = targetAbs.length;
     const hadir = targetAbs.filter(a => a.statusKehadiran === 'Hadir').length;
@@ -241,21 +242,21 @@ export default function DashboardView({
   }, [absensiList, karyawanDateInfo]);
 
   const employeeAttendanceCount = React.useMemo(() => {
-    const targetAbs = absensiList.filter(a => a.tanggal === karyawanDateInfo.date);
+    const targetAbs = absensiList.filter(a => normalizeDateString(a.tanggal) === karyawanDateInfo.date);
     const hadir = targetAbs.filter(a => a.statusKehadiran === 'Hadir').length;
     return { hadir, total: targetAbs.length };
   }, [absensiList, karyawanDateInfo]);
 
-  // B. Worker ("Tukang") Attendance Date, Count & Percentage
+  // B. Worker ("Tukang") Attendance Date, Count & Percentage (WITA - Sulawesi Tenggara)
   const pekerjaDateInfo = React.useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const hasToday = absensiPekerjaList.some(a => a.tanggal === todayStr);
+    const todayStr = getWitaToday();
+    const hasToday = absensiPekerjaList.some(a => normalizeDateString(a.tanggal) === todayStr);
     if (hasToday) {
       return { date: todayStr, label: 'Hari Ini' };
     }
     // Fallback to latest date in table
     if (absensiPekerjaList.length > 0) {
-      const dates = absensiPekerjaList.map(a => a.tanggal).sort();
+      const dates = absensiPekerjaList.map(a => normalizeDateString(a.tanggal)).filter(Boolean).sort();
       const latest = dates[dates.length - 1];
       return { date: latest, label: `${latest}` };
     }
@@ -263,7 +264,7 @@ export default function DashboardView({
   }, [absensiPekerjaList]);
 
   const workerAttendancePct = React.useMemo(() => {
-    const targetAbs = absensiPekerjaList.filter(a => a.tanggal === pekerjaDateInfo.date);
+    const targetAbs = absensiPekerjaList.filter(a => normalizeDateString(a.tanggal) === pekerjaDateInfo.date);
     if (targetAbs.length === 0) return 0;
     const total = targetAbs.length;
     const hadir = targetAbs.filter(a => a.statusKehadiran === 'Hadir').length;
@@ -271,7 +272,7 @@ export default function DashboardView({
   }, [absensiPekerjaList, pekerjaDateInfo]);
 
   const workerAttendanceCount = React.useMemo(() => {
-    const targetAbs = absensiPekerjaList.filter(a => a.tanggal === pekerjaDateInfo.date);
+    const targetAbs = absensiPekerjaList.filter(a => normalizeDateString(a.tanggal) === pekerjaDateInfo.date);
     const hadir = targetAbs.filter(a => a.statusKehadiran === 'Hadir').length;
     return { hadir, total: targetAbs.length };
   }, [absensiPekerjaList, pekerjaDateInfo]);

@@ -10,6 +10,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { FeeMarketing } from '../types';
+import { getWitaToday } from '../utils/timezone';
 
 interface FeeMarketingViewProps {
   feeList: FeeMarketing[];
@@ -66,7 +67,7 @@ export default function FeeMarketingView({
   // Set default month to current month or latest month
   React.useEffect(() => {
     if (availableMonths.length > 0 && !hasSetDefault) {
-      const currentMonth = new Date().toISOString().slice(0, 7); // e.g. "2026-05"
+      const currentMonth = getWitaToday().slice(0, 7); // e.g. "2026-05" in WITA
       if (availableMonths.includes(currentMonth)) {
         setSelectedMonth(currentMonth);
       } else {

@@ -43,6 +43,7 @@ import {
 
 // Import subcomponents
 import DashboardView from './components/DashboardView';
+import { getWitaToday, normalizeDateString, TIMEZONE_SULTRA } from './utils/timezone';
 import KpiView from './components/KpiView';
 import ConstructionView from './components/ConstructionView';
 import LogistikView from './components/LogistikView';
@@ -312,7 +313,7 @@ export default function App() {
   }, [loadSupabaseData]);
 
   const handleUpdateLeadStatus = React.useCallback((id: string, newStatus: LeadPenjualan['leadStatus']) => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getWitaToday();
     setLeadList((prev) =>
       prev.map((l) => (l.id === id ? { ...l, leadStatus: newStatus, tanggalInput: todayStr } : l))
     );
@@ -342,7 +343,7 @@ export default function App() {
   }, []);
 
   const handleUpdateFeeStatus = React.useCallback((id: string, newStatus: FeeMarketing['statusPembayaran']) => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getWitaToday();
     const tglBayar = newStatus === 'Lunas' ? todayStr : '-';
     setFeeList((prev) =>
       prev.map((f) => {
@@ -499,17 +500,17 @@ export default function App() {
   const [modalType, setModalType] = React.useState<'project' | 'konstruksi' | 'progres' | 'inventory' | 'gudang' | 'supplier' | 'transaksi' | 'pembayaran' | 'fee' | 'karyawan' | 'absensi' | 'lead' | 'rab_template' | 'rab_detail' | ''>('');
   const [selectedDefaultRabId, setSelectedDefaultRabId] = React.useState<string>('');
 
-  // Tick clock effect
+  // Tick clock effect (Sulawesi Tenggara - WITA / Asia/Makassar)
   React.useEffect(() => {
     const updateTime = () => {
       const now = new Date();
       setCurrentTime(now.toLocaleString('id-ID', {
-        timeZone: 'UTC',
+        timeZone: TIMEZONE_SULTRA,
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
         hour12: false
-      }) + ' UTC');
+      }) + ' WITA');
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
@@ -528,7 +529,7 @@ export default function App() {
 
   // Saved Entry Handlers (Aggregating form results back to states)
   const handleSaveModal = (data: any) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getWitaToday();
     const generatedId = Math.random().toString(36).substr(2, 9).toUpperCase();
 
     switch (modalType) {
@@ -558,6 +559,7 @@ export default function App() {
           workerPlafon, 
           workerListrik, 
           workerPembersihan,
+          workerDrainase,
           ...cleanKonstruksiData 
         } = data;
         const selectedProj = projects.find(p => p.id === cleanKonstruksiData.projectId);
@@ -574,7 +576,7 @@ export default function App() {
         });
 
         if (autoGenerateJobs) {
-          const templates: { kategoriPekerjaan: 'struktur' | 'plafon' | 'atap' | 'listrik' | 'pembersihan'; itemPekerjaan: string; nilaiPekerjaan: number; }[] = [
+          const templates: { kategoriPekerjaan: 'struktur' | 'plafon' | 'atap' | 'listrik' | 'pembersihan' | 'drainase'; itemPekerjaan: string; nilaiPekerjaan: number; }[] = [
             { kategoriPekerjaan: 'struktur', itemPekerjaan: 'PEK. PONDASI RUMAH', nilaiPekerjaan: 1000000 },
             { kategoriPekerjaan: 'struktur', itemPekerjaan: 'PAS. SLOF', nilaiPekerjaan: 700000 },
             { kategoriPekerjaan: 'struktur', itemPekerjaan: 'TIMBUNAN', nilaiPekerjaan: 300000 },
@@ -585,7 +587,7 @@ export default function App() {
             { kategoriPekerjaan: 'struktur', itemPekerjaan: 'PEK. KAMAR MANDI + SEPTICK TANK', nilaiPekerjaan: 1000000 },
             { kategoriPekerjaan: 'struktur', itemPekerjaan: 'ORNAMEN DEPAN + PAGAR DEPAN&BELAKANG', nilaiPekerjaan: 800000 },
             { kategoriPekerjaan: 'struktur', itemPekerjaan: 'CARPORT+DEKER+PELUR BELAKANG', nilaiPekerjaan: 600000 },
-            { kategoriPekerjaan: 'struktur', itemPekerjaan: 'SALURAN DEPAN', nilaiPekerjaan: 600000 },
+            { kategoriPekerjaan: 'drainase', itemPekerjaan: 'SALURAN DEPAN', nilaiPekerjaan: 600000 },
             { kategoriPekerjaan: 'struktur', itemPekerjaan: 'ACI + PLAMIR', nilaiPekerjaan: 800000 },
             { kategoriPekerjaan: 'struktur', itemPekerjaan: 'CAT DINDING & KUSENG', nilaiPekerjaan: 1200000 },
             { kategoriPekerjaan: 'listrik', itemPekerjaan: 'PEK. LISTRIK', nilaiPekerjaan: 500000 },
@@ -596,13 +598,14 @@ export default function App() {
           ];
 
           // Helper to map and retrieve the assigned worker's phone number
-          const getAssignedWorker = (category: 'struktur' | 'plafon' | 'atap' | 'listrik' | 'pembersihan') => {
+          const getAssignedWorker = (category: 'struktur' | 'plafon' | 'atap' | 'listrik' | 'pembersihan' | 'drainase') => {
             let assignedName = '';
             if (category === 'struktur') assignedName = workerStruktur || '';
             else if (category === 'atap') assignedName = workerAtap || '';
             else if (category === 'plafon') assignedName = workerPlafon || '';
             else if (category === 'listrik') assignedName = workerListrik || '';
             else if (category === 'pembersihan') assignedName = workerPembersihan || '';
+            else if (category === 'drainase') assignedName = workerDrainase || '';
 
             assignedName = assignedName.trim();
             if (!assignedName) {
@@ -737,8 +740,9 @@ export default function App() {
         );
 
         if (matchedInv) {
-          const diff = data.type === 'masuk' ? data.jumlah : -data.jumlah;
-          const updatedQty = Math.max(0, matchedInv.jumlahStok + diff);
+          const numJumlah = Number(data.jumlah) || 0;
+          const diff = data.type === 'masuk' ? numJumlah : -numJumlah;
+          const updatedQty = Math.max(0, Math.round((matchedInv.jumlahStok + diff) * 1000) / 1000);
 
           setInventoryList(prevInv =>
             prevInv.map(inv =>
@@ -820,10 +824,11 @@ export default function App() {
       }
       case 'absensi': {
         // Add optional/derived properties directly
+        const cleanTanggal = normalizeDateString(data.tanggal) || today;
         const matchedKaryawan = karyawanList.find(k => k.id === data.karyawanId);
         const newAbsWithProps: AbsensiKaryawan = {
           id: `abs-${generatedId}`,
-          tanggal: data.tanggal,
+          tanggal: cleanTanggal,
           waktuCheckin: data.statusKehadiran === 'Hadir' ? data.waktuCheckin : '-',
           karyawanId: data.karyawanId,
           namaKaryawan: matchedKaryawan ? matchedKaryawan.namaKaryawan : 'Karyawan',
@@ -845,9 +850,10 @@ export default function App() {
         break;
       }
       case 'absensi_pekerja': {
+        const cleanTanggal = normalizeDateString(data.tanggal) || today;
         const newAbsP: AbsensiPekerja = {
           id: `absp-${generatedId}`,
-          tanggal: data.tanggal,
+          tanggal: cleanTanggal,
           namaTukang: data.namaTukang,
           statusKehadiran: data.statusKehadiran,
           keterangan: data.keterangan || '-',
@@ -1207,7 +1213,13 @@ export default function App() {
                 absensiList={absensiList}
                 pekerjaList={pekerjaList}
                 absensiPekerjaList={absensiPekerjaList}
-                onNavigateTab={(tab, subTab) => navigateToTab(tab, { subTab })}
+                onNavigateTab={(tab, options) => {
+                  if (typeof options === 'string') {
+                    navigateToTab(tab, { subTab: options });
+                  } else {
+                    navigateToTab(tab, options);
+                  }
+                }}
               />
             )}
 

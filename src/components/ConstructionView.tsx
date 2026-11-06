@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Project, Konstruksi, ProgresPekerjaan, TransaksiMaterial, Inventory, RincianPembayaran, Pekerja, RabTemplate } from '../types';
 import { UserSession } from './LoginView';
+import { getWitaToday } from '../utils/timezone';
 
 interface ConstructionViewProps {
   projects?: Project[];
@@ -274,20 +275,49 @@ export default function ConstructionView({
       tukangGroups[key].totalValue += Number(prog.totalNilaiPekerjaan) || 0;
     });
 
-    return Object.values(tukangGroups).map((g) => {
-      // Find sum of matching payments for this worker + category (+ block if specified in payment)
-      const payments = (pembayaranList || [])
-        .filter(p => {
-          const sameWorker = (p.namaTukang || '').trim().toLowerCase() === g.namaTukang.toLowerCase();
-          const sameCat = (p.kategoriPekerjaan || '').trim().toLowerCase() === g.kategoriPekerjaan.toLowerCase();
-          const pBlok = (p.namaBlok || '').trim().toLowerCase();
-          const sameBlok = !pBlok || pBlok === g.blokId.toLowerCase();
-          return sameWorker && sameCat && sameBlok;
-        })
-        .reduce((sum, p) => sum + (Number(p.nilaiPembayaran) || 0), 0);
+    const groupsList = Object.values(tukangGroups);
 
-      const unpaid = Math.max(0, g.totalValue - payments);
-      const paidPct = g.totalValue > 0 ? Math.round((payments / g.totalValue) * 100) : 0;
+    // 2. Hitung total pool pembayaran per (Pekerja + Kategori)
+    const paymentPools: { [key: string]: number } = {};
+    (pembayaranList || []).forEach((p) => {
+      const cleanWorker = (p.namaTukang || '').trim().toLowerCase();
+      const cleanCat = (p.kategoriPekerjaan || '').trim().toLowerCase();
+      const wKey = `${cleanWorker}::${cleanCat}`;
+      paymentPools[wKey] = (paymentPools[wKey] || 0) + (Number(p.nilaiPembayaran) || 0);
+    });
+
+    // Salinan pool pembayaran untuk dialokasikan secara estafet / berurutan (Waterfall FIFO)
+    const remainingPools: { [key: string]: number } = { ...paymentPools };
+
+    // Catat indeks baris terakhir untuk setiap pekerja+kategori agar sisa overpayment (jika ada) tetap tercatat
+    const lastRowIndexByWorker: { [key: string]: number } = {};
+    groupsList.forEach((g, idx) => {
+      const wKey = `${g.namaTukang.toLowerCase()}::${g.kategoriPekerjaan.toLowerCase()}`;
+      lastRowIndexByWorker[wKey] = idx;
+    });
+
+    return groupsList.map((g, idx) => {
+      const wKey = `${g.namaTukang.toLowerCase()}::${g.kategoriPekerjaan.toLowerCase()}`;
+      let pool = remainingPools[wKey] || 0;
+      const isLastRow = lastRowIndexByWorker[wKey] === idx;
+
+      let allocatedPayment = 0;
+      if (g.totalValue > 0) {
+        // Lunasi unit ini sampai maksimal 100% nilai progresnya
+        allocatedPayment = Math.min(g.totalValue, pool);
+        pool -= allocatedPayment;
+        remainingPools[wKey] = pool;
+      }
+
+      // Jika baris terakhir pekerja ini dan masih ada sisa pool pembayaran (misal overpayment),
+      // tampung pada baris ini agar total nilai pembayaran tetap utuh
+      if (isLastRow && remainingPools[wKey] > 0) {
+        allocatedPayment += remainingPools[wKey];
+        remainingPools[wKey] = 0;
+      }
+
+      const unpaid = Math.max(0, g.totalValue - allocatedPayment);
+      const paidPct = g.totalValue > 0 ? Math.round((allocatedPayment / g.totalValue) * 100) : 0;
 
       // Find the matched worker from pekerjaList to get their latest phone/whatsapp info
       const matchedPekerja = (pekerjaList || []).find(
@@ -304,7 +334,7 @@ export default function ConstructionView({
         noHp: activeNoHp,
         kategoriPekerjaan: g.kategoriPekerjaan,
         nilaiTotal: g.totalValue,
-        nilaiTerbayar: payments,
+        nilaiTerbayar: allocatedPayment,
         nilaiBelumTerbayar: unpaid,
         persenTerbayar: paidPct,
         tanggalMulaiPekerjaan: g.tanggalMulai
@@ -324,6 +354,23 @@ export default function ConstructionView({
       return matchProject && matchSearch && matchKategori;
     });
   }, [opnameTukangList, searchQuery, selectedProjectId, opnameKategoriFilter]);
+
+  // Perhitungan Akumulasi Total Biaya Opname Pekerja (Menyesuaikan filter pencarian/kategori yang aktif)
+  const opnameTotals = React.useMemo(() => {
+    const totalNilai = filteredOpname.reduce((sum, o) => sum + (Number(o.nilaiTotal) || 0), 0);
+    const totalTerbayar = filteredOpname.reduce((sum, o) => sum + (Number(o.nilaiTerbayar) || 0), 0);
+    const totalBelumTerbayar = filteredOpname.reduce((sum, o) => sum + (Number(o.nilaiBelumTerbayar) || 0), 0);
+    const persenTerbayar = totalNilai > 0 ? Math.round((totalTerbayar / totalNilai) * 100) : 0;
+    const totalBaris = filteredOpname.length;
+
+    return {
+      totalNilai,
+      totalTerbayar,
+      totalBelumTerbayar,
+      persenTerbayar,
+      totalBaris,
+    };
+  }, [filteredOpname]);
 
   const rincianMetrics = React.useMemo(() => {
     if (!pembayaranList || pembayaranList.length === 0) {
@@ -1103,23 +1150,122 @@ export default function ConstructionView({
       )}
 
       {subTab === 'opname' && (
-        <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white/60 shadow-sm">
-          <table className="w-full text-left text-sm border-collapse">
-            <thead>
-              <tr className="bg-slate-50/70 border-b border-slate-100 text-slate-500 text-[11px] uppercase tracking-wider font-display font-medium">
-                <th className="p-4">Pekerja</th>
-                <th className="p-4">Kategori</th>
-                <th className="p-4">Blok & Projek</th>
-                <th className="p-4 text-right">Nilai Total Progres</th>
-                <th className="p-4 text-right">Nilai & Progres Terbayar</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700 font-sans">
-              {filteredOpname.map((opn) => {
-                const isDebt = opn.nilaiBelumTerbayar > 0;
-                const phoneStr = opn.noHp != null ? String(opn.noHp) : '';
-                const cleanPhone = phoneStr.replace(/\D/g, '');
-                const waPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone.startsWith('8') ? '62' + cleanPhone : cleanPhone;
+        <div className="space-y-4">
+          {/* Panel Ringkasan Total Biaya Opname (Dinamis Sesuai Filter) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-white/75 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-xs">
+            <div className="flex items-center gap-3 p-1.5">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200/60 flex items-center justify-center text-indigo-600 shrink-0">
+                <Receipt size={18} />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Total Biaya Progres ({opnameTotals.totalBaris} Baris)
+                </span>
+                <span className="text-base sm:text-lg font-mono font-black text-slate-900 block leading-tight">
+                  {formatRupiah(opnameTotals.totalNilai)}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-1.5 border-t sm:border-t-0 sm:border-l border-slate-100">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200/60 flex items-center justify-center text-emerald-600 shrink-0">
+                <CheckCircle2 size={18} />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Total Progres Terbayar
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-base sm:text-lg font-mono font-black text-emerald-600 block leading-tight">
+                    {formatRupiah(opnameTotals.totalTerbayar)}
+                  </span>
+                  <span className="text-xs font-bold text-slate-400">({opnameTotals.persenTerbayar}%)</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 p-1.5 border-t sm:border-t-0 sm:border-l border-slate-100">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-200/60 flex items-center justify-center text-rose-600 shrink-0">
+                <AlertCircle size={18} />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Total Sisa Belum Bayar
+                </span>
+                <span className="text-base sm:text-lg font-mono font-black text-rose-600 block leading-tight">
+                  {formatRupiah(opnameTotals.totalBelumTerbayar)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-2xl border border-slate-200/80 bg-white/70 shadow-sm">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-slate-500 text-[11px] uppercase tracking-wider font-display font-bold">
+                  <th className="p-4">Pekerja</th>
+                  <th className="p-4">Kategori</th>
+                  <th className="p-4">Blok & Projek</th>
+                  <th className="p-4 text-right">Nilai Total Progres</th>
+                  <th className="p-4 text-right">Nilai & Progres Terbayar</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700 font-sans">
+                {/* BARIS TOTAL BIAYA (DI ATAS TABEL TEPAT SETELAH JUDUL KOLOM) */}
+                <tr className="bg-gradient-to-r from-indigo-50/80 via-slate-50/90 to-emerald-50/80 border-b-2 border-indigo-200/80 font-sans shadow-xs">
+                  <td colSpan={3} className="p-4">
+                    <div className="flex items-center gap-2.5">
+                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-600 text-white text-xs font-black shadow-xs">
+                        ∑
+                      </span>
+                      <div>
+                        <div className="font-display font-black text-slate-900 text-xs sm:text-sm tracking-wide flex items-center gap-2">
+                          <span>TOTAL BIAYA OPNAME</span>
+                          <span className="text-[11px] font-bold text-indigo-700 bg-indigo-100/90 px-2 py-0.5 rounded-md border border-indigo-200">
+                            {opnameTotals.totalBaris} Baris Terhitung
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 font-medium mt-0.5">
+                          Akumulasi seluruh nilai baris terfilter
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-4 text-right">
+                    <div className="font-mono text-xs sm:text-sm font-black text-slate-900">
+                      {formatRupiah(opnameTotals.totalNilai)}
+                    </div>
+                    {opnameTotals.totalBelumTerbayar > 0 && (
+                      <div className="mt-1 bg-white/90 border border-rose-200/80 px-2 py-0.5 rounded-md inline-block text-right shadow-xs">
+                        <span className="font-mono text-[11px] font-bold text-rose-600">
+                          Sisa: {formatRupiah(opnameTotals.totalBelumTerbayar)}
+                        </span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="p-4 text-right">
+                    <div className="font-mono text-xs sm:text-sm font-black text-emerald-600">
+                      {formatRupiah(opnameTotals.totalTerbayar)}
+                    </div>
+                    <div className="flex flex-col items-end mt-1">
+                      <span className="text-[10px] font-bold text-slate-600 mb-0.5">
+                        {opnameTotals.persenTerbayar}% Terbayar
+                      </span>
+                      <div className="w-20 bg-slate-200/80 h-1.5 rounded-full overflow-hidden">
+                        <div 
+                          className="bg-gradient-to-r from-emerald-500 to-teal-500 h-1.5 rounded-full"
+                          style={{ width: `${Math.min(100, opnameTotals.persenTerbayar)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+
+                {filteredOpname.map((opn) => {
+                  const isDebt = opn.nilaiBelumTerbayar > 0;
+                  const phoneStr = opn.noHp != null ? String(opn.noHp) : '';
+                  const cleanPhone = phoneStr.replace(/\D/g, '');
+                  const waPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone.startsWith('8') ? '62' + cleanPhone : cleanPhone;
 
                 return (
                   <tr key={opn.id} className="hover:bg-white/40 transition">
@@ -1190,7 +1336,8 @@ export default function ConstructionView({
             </tbody>
           </table>
         </div>
-      )}
+      </div>
+    )}
 
       {subTab === 'rincian' && (
         <div className="space-y-4">
@@ -1301,7 +1448,7 @@ export default function ConstructionView({
               Apakah bangunan <strong className="text-indigo-600">Blok {confirmModalData.blockId}</strong> sudah selesai terbangun?
               <br />
               <span className="text-xs text-slate-500 mt-2 block p-2.5 rounded-xl bg-[#e0e5ec] shadow-[inset_2px_2px_4px_rgba(163,177,198,0.4),inset_-2px_-2px_4px_rgba(255,255,255,0.8)]">
-                Tanggal selesai (<code className="font-mono text-emerald-600 font-bold">{new Date().toISOString().split('T')[0]}</code>) akan dicatat secara otomatis ke kolom <strong>tanggalSelesai</strong>.
+                Tanggal selesai (<code className="font-mono text-emerald-600 font-bold">{getWitaToday()}</code>) akan dicatat secara otomatis ke kolom <strong>tanggalSelesai</strong> (WITA).
               </span>
             </p>
 
@@ -1316,7 +1463,7 @@ export default function ConstructionView({
               <button
                 type="button"
                 onClick={() => {
-                  const todayStr = new Date().toISOString().split('T')[0];
+                  const todayStr = getWitaToday();
                   onUpdateKonstruksiStatus?.(confirmModalData.blockId, 'terbangun', todayStr);
                   setConfirmModalData(null);
                 }}

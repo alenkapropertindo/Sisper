@@ -1,5 +1,6 @@
 // Google Sheets via Google Apps Script (Web App) Database Adapter for SISPER
 // Supports dynamic Web App URL configuration via localStorage or VITE_APPS_SCRIPT_URL env var
+import { normalizeDateString } from './utils/timezone';
 
 const STORAGE_KEY_URL = 'sisper_apps_script_url';
 
@@ -86,6 +87,14 @@ export async function fetchAllSheetsData(forceRefresh = false): Promise<Record<s
         'nilaiPembayaran', 'komisi', 'qtyStandar'
       ]);
       const phoneKeys = new Set(['noHp', 'noWhatsapp', 'whatsup', 'whatsapp']);
+      const dateKeys = new Set([
+        'tanggal',
+        'tanggalGabung',
+        'tanggalPembayaran',
+        'tanggalMulaiBangun',
+        'tanggalSelesai',
+        'tanggalInput',
+      ]);
 
       Object.keys(rawData).forEach((table) => {
         if (Array.isArray(rawData[table])) {
@@ -95,6 +104,8 @@ export async function fetchAllSheetsData(forceRefresh = false): Promise<Record<s
               const val = row[k];
               if (numericKeys.has(k)) {
                 normalized[k] = Number(val) || 0;
+              } else if (dateKeys.has(k)) {
+                normalized[k] = normalizeDateString(val);
               } else if (val === null || val === undefined) {
                 normalized[k] = '';
               } else {

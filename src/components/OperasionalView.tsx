@@ -9,6 +9,7 @@ import {
   Phone
 } from 'lucide-react';
 import { Karyawan, AbsensiKaryawan, ProgresPekerjaan, AbsensiPekerja, Pekerja } from '../types';
+import { normalizeDateString, getWitaToday } from '../utils/timezone';
 
 interface OperasionalViewProps {
   karyawanList: Karyawan[];
@@ -70,14 +71,13 @@ export default function OperasionalView({
   const availableMonths = React.useMemo(() => {
     const set = new Set<string>();
     (absensiList || []).forEach(a => {
-      if (a.tanggal && a.tanggal.length >= 7) {
-        set.add(a.tanggal.slice(0, 7));
+      const cleanDate = normalizeDateString(a.tanggal);
+      if (cleanDate && cleanDate.length >= 7) {
+        set.add(cleanDate.slice(0, 7));
       }
     });
     if (set.size === 0) {
-      const now = new Date();
-      const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      set.add(currentYM);
+      set.add(getWitaToday().slice(0, 7));
     }
     return Array.from(set).sort().reverse();
   }, [absensiList]);
@@ -94,15 +94,14 @@ export default function OperasionalView({
   const availableWorkerMonths = React.useMemo(() => {
     const set = new Set<string>();
     (absensiPekerjaList || []).forEach(a => {
-      if (a.tanggal && a.tanggal.length >= 7) {
-        set.add(a.tanggal.slice(0, 7));
+      const cleanDate = normalizeDateString(a.tanggal);
+      if (cleanDate && cleanDate.length >= 7) {
+        set.add(cleanDate.slice(0, 7));
       }
     });
     (availableMonths || []).forEach(m => set.add(m));
     if (set.size === 0) {
-      const now = new Date();
-      const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      set.add(currentYM);
+      set.add(getWitaToday().slice(0, 7));
     }
     return Array.from(set).sort().reverse();
   }, [absensiPekerjaList, availableMonths]);
@@ -125,11 +124,10 @@ export default function OperasionalView({
   // Monthly Recap for Karyawan
   const employeeMonthlyRecap = React.useMemo(() => {
     return karyawanList.map(emp => {
-      const empAbsList = (absensiList || []).filter(a => 
-        a.karyawanId === emp.id && 
-        a.tanggal && 
-        a.tanggal.startsWith(selectedMonth)
-      );
+      const empAbsList = (absensiList || []).filter(a => {
+        const cleanDate = normalizeDateString(a.tanggal);
+        return a.karyawanId === emp.id && cleanDate && cleanDate.startsWith(selectedMonth);
+      });
       
       const total = empAbsList.length;
       const hadir = empAbsList.filter(a => a.statusKehadiran === 'Hadir').length;
@@ -190,11 +188,12 @@ export default function OperasionalView({
     });
 
     return Array.from(workerMap.values()).map(w => {
-      const wAbsList = (absensiPekerjaList || []).filter(a => 
-        a.namaTukang.trim().toLowerCase() === w.namaTukang.toLowerCase() &&
-        a.tanggal &&
-        a.tanggal.startsWith(selectedWorkerMonth)
-      );
+      const wAbsList = (absensiPekerjaList || []).filter(a => {
+        const cleanDate = normalizeDateString(a.tanggal);
+        return a.namaTukang.trim().toLowerCase() === w.namaTukang.toLowerCase() &&
+          cleanDate &&
+          cleanDate.startsWith(selectedWorkerMonth);
+      });
 
       const total = wAbsList.length;
       const hadir = wAbsList.filter(a => a.statusKehadiran === 'Hadir').length;
@@ -821,6 +820,7 @@ export default function OperasionalView({
                     <option value="atap">Atap</option>
                     <option value="listrik">Listrik</option>
                     <option value="pembersihan">Pembersihan</option>
+                    <option value="drainase">Drainase</option>
                   </select>
                 </div>
               </div>

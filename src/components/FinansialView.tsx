@@ -67,15 +67,44 @@ export default function FinansialView({
       tukangGroups[key].totalValue += prog.totalNilaiPekerjaan;
     });
 
-    // Translate to OpnameTukang structural representation, calculating paid value
-    return Object.values(tukangGroups).map((g) => {
-      // Find sum of matching payments for this worker + category
-      const payments = pembayaranList
-        .filter(p => p.namaTukang.toLowerCase() === g.namaTukang.toLowerCase() && p.kategoriPekerjaan.toLowerCase() === g.kategoriPekerjaan.toLowerCase())
-        .reduce((sum, p) => sum + p.nilaiPembayaran, 0);
+    const groupsList = Object.values(tukangGroups);
 
-      const unpaid = Math.max(0, g.totalValue - payments);
-      const paidPct = g.totalValue > 0 ? Math.round((payments / g.totalValue) * 100) : 0;
+    // Hitung total pool pembayaran per (Pekerja + Kategori)
+    const paymentPools: { [key: string]: number } = {};
+    (pembayaranList || []).forEach((p) => {
+      const cleanWorker = (p.namaTukang || '').trim().toLowerCase();
+      const cleanCat = (p.kategoriPekerjaan || '').trim().toLowerCase();
+      const wKey = `${cleanWorker}::${cleanCat}`;
+      paymentPools[wKey] = (paymentPools[wKey] || 0) + (Number(p.nilaiPembayaran) || 0);
+    });
+
+    const remainingPools: { [key: string]: number } = { ...paymentPools };
+
+    const lastRowIndexByWorker: { [key: string]: number } = {};
+    groupsList.forEach((g, idx) => {
+      const wKey = `${g.namaTukang.toLowerCase()}::${g.kategoriPekerjaan.toLowerCase()}`;
+      lastRowIndexByWorker[wKey] = idx;
+    });
+
+    return groupsList.map((g, idx) => {
+      const wKey = `${g.namaTukang.toLowerCase()}::${g.kategoriPekerjaan.toLowerCase()}`;
+      let pool = remainingPools[wKey] || 0;
+      const isLastRow = lastRowIndexByWorker[wKey] === idx;
+
+      let allocatedPayment = 0;
+      if (g.totalValue > 0) {
+        allocatedPayment = Math.min(g.totalValue, pool);
+        pool -= allocatedPayment;
+        remainingPools[wKey] = pool;
+      }
+
+      if (isLastRow && remainingPools[wKey] > 0) {
+        allocatedPayment += remainingPools[wKey];
+        remainingPools[wKey] = 0;
+      }
+
+      const unpaid = Math.max(0, g.totalValue - allocatedPayment);
+      const paidPct = g.totalValue > 0 ? Math.round((allocatedPayment / g.totalValue) * 100) : 0;
 
       return {
         id: g.id,
@@ -84,7 +113,7 @@ export default function FinansialView({
         namaTukang: g.namaTukang,
         kategoriPekerjaan: g.kategoriPekerjaan,
         nilaiTotal: g.totalValue,
-        nilaiTerbayar: payments,
+        nilaiTerbayar: allocatedPayment,
         nilaiBelumTerbayar: unpaid,
         persenTerbayar: paidPct,
         tanggalMulaiPekerjaan: g.tanggalMulai
