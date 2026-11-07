@@ -22,6 +22,7 @@ import {
 import { Project, Konstruksi, ProgresPekerjaan, TransaksiMaterial, Inventory, RincianPembayaran, Pekerja, RabTemplate } from '../types';
 import { UserSession } from './LoginView';
 import { getWitaToday } from '../utils/timezone';
+import { compareBlockIds } from '../utils/sorting';
 
 interface ConstructionViewProps {
   projects?: Project[];
@@ -162,10 +163,10 @@ export default function ConstructionView({
     return Math.round(sum / blockProgs.length);
   }, [progresList]);
 
-  // Unique block options dynamically computed from progresList
+  // Unique block options dynamically computed from progresList (diurutkan mulai dari A01)
   const uniqueBlokOptions = React.useMemo(() => {
     const bloks = progresList.map((p) => p.blokRumah);
-    return Array.from(new Set(bloks)).sort();
+    return Array.from(new Set(bloks)).sort(compareBlockIds);
   }, [progresList]);
 
   // Unique categories dynamically computed from progresList
@@ -174,43 +175,47 @@ export default function ConstructionView({
     return Array.from(new Set(kats)).sort();
   }, [progresList]);
 
-  // Filters
+  // Filters & Natural Sorting Blok Unit (Dimulai dari A01/A-01, A02/A-02, dst.)
   const filteredBloks = React.useMemo(() => {
-    return konstruksiList.filter((k) => {
-      const matchProject = selectedProjectId === 'all' || k.projectId === selectedProjectId;
-      const matchSearch = k.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        k.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        k.type.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      let matchStatus = true;
-      if (statusFilter !== 'all') {
-        if (statusFilter === 'readyStock') {
-          matchStatus = k.statusPenjualan === 'tersedia' && k.statusPembangunan === 'terbangun';
-        } else if (statusFilter === 'backlog') {
-          matchStatus = k.statusPenjualan === 'terbooking' && k.statusPembangunan === 'onProgres';
-        } else {
-          matchStatus = k.statusPembangunan === statusFilter || k.statusPenjualan === statusFilter;
+    return konstruksiList
+      .filter((k) => {
+        const matchProject = selectedProjectId === 'all' || k.projectId === selectedProjectId;
+        const matchSearch = k.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
+          k.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          k.type.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        let matchStatus = true;
+        if (statusFilter !== 'all') {
+          if (statusFilter === 'readyStock') {
+            matchStatus = k.statusPenjualan === 'tersedia' && k.statusPembangunan === 'terbangun';
+          } else if (statusFilter === 'backlog') {
+            matchStatus = k.statusPenjualan === 'terbooking' && k.statusPembangunan === 'onProgres';
+          } else {
+            matchStatus = k.statusPembangunan === statusFilter || k.statusPenjualan === statusFilter;
+          }
         }
-      }
-      return matchProject && matchSearch && matchStatus;
-    });
+        return matchProject && matchSearch && matchStatus;
+      })
+      .sort((a, b) => compareBlockIds(a.id, b.id));
   }, [konstruksiList, selectedProjectId, searchQuery, statusFilter]);
 
   const filteredProgres = React.useMemo(() => {
-    return progresList.filter((p) => {
-      // Find associated project of the block ID
-      const associatedBlock = konstruksiList.find(k => k.id === p.blokRumah);
-      const matchProject = selectedProjectId === 'all' || (associatedBlock && associatedBlock.projectId === selectedProjectId);
-      const matchSearch = p.blokRumah.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.namaTukang.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.itemPekerjaan.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.kategoriPekerjaan.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchBlok = progresBlokFilter === 'all' || p.blokRumah === progresBlokFilter;
-      const matchKategori = progresKategoriFilter === 'all' || p.kategoriPekerjaan.toLowerCase() === progresKategoriFilter.toLowerCase();
-      
-      return matchProject && matchSearch && matchBlok && matchKategori;
-    });
+    return progresList
+      .filter((p) => {
+        // Find associated project of the block ID
+        const associatedBlock = konstruksiList.find(k => k.id === p.blokRumah);
+        const matchProject = selectedProjectId === 'all' || (associatedBlock && associatedBlock.projectId === selectedProjectId);
+        const matchSearch = p.blokRumah.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.namaTukang.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.itemPekerjaan.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.kategoriPekerjaan.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        const matchBlok = progresBlokFilter === 'all' || p.blokRumah === progresBlokFilter;
+        const matchKategori = progresKategoriFilter === 'all' || p.kategoriPekerjaan.toLowerCase() === progresKategoriFilter.toLowerCase();
+        
+        return matchProject && matchSearch && matchBlok && matchKategori;
+      })
+      .sort((a, b) => compareBlockIds(a.blokRumah, b.blokRumah));
   }, [progresList, konstruksiList, selectedProjectId, searchQuery, progresBlokFilter, progresKategoriFilter]);
 
   // Helper: Resolve real Project ID, Project Name, and Tanggal Mulai from konstruksiList & projects database
@@ -275,7 +280,7 @@ export default function ConstructionView({
       tukangGroups[key].totalValue += Number(prog.totalNilaiPekerjaan) || 0;
     });
 
-    const groupsList = Object.values(tukangGroups);
+    const groupsList = Object.values(tukangGroups).sort((a, b) => compareBlockIds(a.blokId, b.blokId));
 
     // 2. Hitung total pool pembayaran per (Pekerja + Kategori)
     const paymentPools: { [key: string]: number } = {};

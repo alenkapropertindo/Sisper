@@ -44,6 +44,7 @@ import {
 // Import subcomponents
 import DashboardView from './components/DashboardView';
 import { getWitaToday, normalizeDateString, TIMEZONE_SULTRA } from './utils/timezone';
+import { compareBlockIds } from './utils/sorting';
 import KpiView from './components/KpiView';
 import ConstructionView from './components/ConstructionView';
 import LogistikView from './components/LogistikView';
@@ -276,7 +277,7 @@ export default function App() {
           tanggalSelesai: row.tanggalSelesai || row.tanggal_selesai || undefined,
         };
       });
-      setKonstruksiList(normalizedKonstruksi);
+      setKonstruksiList(normalizedKonstruksi.sort((a, b) => compareBlockIds(a.id, b.id)));
       setTransaksiList(resTransaksi.data || []);
       setProgresList(resProgres.data || []);
       setPembayaranList(resPembayaran.data || []);
@@ -567,7 +568,7 @@ export default function App() {
           ...cleanKonstruksiData,
           projectName: selectedProj ? selectedProj.name : 'Unknown Project',
         };
-        setKonstruksiList(prev => [newKonstruksi, ...prev]);
+        setKonstruksiList(prev => [...prev, newKonstruksi].sort((a, b) => compareBlockIds(a.id, b.id)));
         showToast(`Sukses menambahkan Kapling Blok ${newKonstruksi.id}!`);
         
         // Supabase Insert Table
